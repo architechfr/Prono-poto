@@ -54,6 +54,9 @@ h1,h2{font-weight:900;letter-spacing:.5px}
 .brand span{color:var(--am)}
 .demo-pill{font-size:9px;font-weight:900;background:var(--am);color:#000;
   padding:3px 9px;border-radius:99px;letter-spacing:.5px}
+.ff-back{font-size:11px;font-weight:800;color:var(--t2);text-decoration:none;white-space:nowrap;
+  border:1px solid var(--s3);padding:6px 11px;border-radius:99px;background:rgba(20,38,74,.55);transition:.15s}
+.ff-back:active{color:var(--g);border-color:var(--g)}
 
 /* ── main / nav ── */
 .main{flex:1 1 auto;padding-bottom:104px}
@@ -369,7 +372,10 @@ h1,h2{font-weight:900;letter-spacing:.5px}
 <body>
 <div class="topbar">
   <div class="brand">PRONO <span>POTO</span> ⚽</div>
-  <div id="modePill"></div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <a class="ff-back" href="https://architechfr.github.io/FOOT-FLASH/app/src/main/assets/index.html" title="Retour à Foot Flash : calendrier, équipes, simulateur, quiz">⚽ Foot Flash</a>
+    <div id="modePill"></div>
+  </div>
 </div>
 <div class="main" id="app"></div>
 <div class="nav" id="nav" style="display:none">
@@ -1181,6 +1187,16 @@ function renderModal(){
      +'<input class="input code" id="inCode" maxlength="6" placeholder="CODE" value="'+esc(urlCode)+'">'
      +'<button class="btn" onclick="doJoin()">🚀 C\'est parti !</button>'
      +'<div class="mini-hint" style="margin-top:4px">Tu n\'as pas de code ? Demande-le à l\'organisateur de ta ligue.</div></div>';
+  }else if(S.modal==="ffimport"){
+    var pendData=_ffPending();
+    var pendN=pendData?Object.keys(pendData).length:0;
+    inner='<div class="form success"><div class="cs-emoji">📥</div>'
+     +'<div class="cs-title">'+pendN+' pronos Foot Flash reçus !</div>'
+     +'<div class="mini-hint" style="margin:0 0 10px">Choisis la ligue où les utiliser. Tu pourras les relire et les modifier avant de les 📤 publier.</div>'
+     +(S.league?'<button class="btn" onclick="ffApplyPending()">✅ Les mettre dans « '+esc(S.league.name)+' »</button>':'')
+     +'<button class="btn alt" onclick="closeModal();openModal(\'join\')">🔑 Rejoindre une '+(S.league?'autre ':'')+'ligue avec un code</button>'
+     +'<button class="btn alt" onclick="closeModal();openModal(\'create\')">➕ Créer une nouvelle ligue</button>'
+     +'<div class="mini-hint" style="margin-top:6px">Tes pronos restent en attente — ils seront appliqués dès que tu entres dans une ligue.</div></div>';
   }else if(S.modal==="published"){
     var n=S._pubCount||0;
     inner='<div class="form success"><div class="cs-emoji">📤</div>'
@@ -1215,10 +1231,11 @@ async function doJoin(){
   S.pseudo=ps;save();
   try{await ensureAuth();await apiJoinLeague(code);save();closeModal();
     await boot();go("pronos");fireConfetti();
-    toast("🎉 Bienvenue dans « "+S.league.name+" » !");}
+    toast("🎉 Bienvenue dans « "+S.league.name+" » !");
+    if(_ffPending())setTimeout(ffApplyPending,900);}
   catch(e){toast("⚠️ "+(e.message||e))}
 }
-async function enterLeague(){closeModal();await boot();go("pronos");toast("🎉 Bienvenue dans « "+S.league.name+" » !")}
+async function enterLeague(){closeModal();await boot();go("pronos");toast("🎉 Bienvenue dans « "+S.league.name+" » !");if(_ffPending())setTimeout(ffApplyPending,900)}
 
 /* ─── Router ───────────────────────────────────────────────── */
 function go(v){S.view=v;S.detail=null;render();scrollTo(0,0)}
@@ -1269,6 +1286,14 @@ function ffImportApply(data){
   toast(n?("📥 "+n+" pronos Foot Flash importés"+(locked?" · "+locked+" verrouillés ignorés":"")+" — pense à 📤 Publier !")
          :"Aucun prono importable (matchs verrouillés ?)");
 }
+function _ffPending(){try{return JSON.parse(localStorage.getItem("ppff_ffimport")||"null")}catch(e){return null}}
+function ffApplyPending(){
+  var d=_ffPending();
+  closeModal();
+  if(!d){toast("Rien à importer");return}
+  try{localStorage.removeItem("ppff_ffimport")}catch(e){}
+  ffImportApply(d);
+}
 function importFromFootFlash(){
   var data=null;
   // 1) lien d'import en attente (venu de l'APK)
@@ -1292,18 +1317,20 @@ async function boot(){
   await boot();
   var qs=new URLSearchParams(location.search);
   // Lien d'import Foot Flash (?ffimport=base64) — depuis l'APK ou un autre appareil
-  var ffi=qs.get("ffimport");
+  var ffi=qs.get("ffimport"),ffiOk=false;
   if(ffi){
     try{
       var data=JSON.parse(atob(decodeURIComponent(ffi)));
-      if(S.league){ffImportApply(data)}
-      else{localStorage.setItem("ppff_ffimport",JSON.stringify(data));toast("📥 Pronos reçus — rejoins ta ligue puis Importer")}
+      localStorage.setItem("ppff_ffimport",JSON.stringify(data));
+      ffiOk=true;
     }catch(e){toast("⚠️ Lien d'import invalide")}
     history.replaceState(null,"",location.pathname);
   }
   var urlCode=qs.get("ligue");
   if(!S.league&&urlCode){S.view="onboard";render();openModal("join");}
   else{S.view=S.league?"pronos":"onboard";render();}
+  // Pronos Foot Flash reçus : on propose le choix de la ligue (actuelle / rejoindre / créer)
+  if(ffiOk)openModal("ffimport");
 })();
 </script>
 </body>
