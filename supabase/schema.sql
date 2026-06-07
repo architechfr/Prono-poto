@@ -96,30 +96,43 @@ create policy prof_read   on profiles for select using (true);
 create policy prof_insert on profiles for insert with check (id = auth.uid());
 create policy prof_update on profiles for update using (id = auth.uid());
 
+-- ⚠️ Ne JAMAIS interroger league_members dans une policy de league_members
+-- (ou via une policy en cascade) : "infinite recursion detected in policy".
+-- Remède : fonctions SECURITY DEFINER (exécutées hors RLS) comme test d'appartenance.
+
+create or replace function is_league_member(p_league uuid)
+returns boolean
+language sql security definer stable set search_path = public as $$
+  select exists (
+    select 1 from league_members
+    where league_id = p_league and user_id = auth.uid()
+  );
+$$;
+
+create or replace function shares_league_with(p_user uuid)
+returns boolean
+language sql security definer stable set search_path = public as $$
+  select exists (
+    select 1 from league_members me
+    join league_members them on them.league_id = me.league_id
+    where me.user_id = auth.uid() and them.user_id = p_user
+  );
+$$;
+
 -- Ligues : visibles par leurs membres (l'accès par code passe par la RPC join_league)
-create policy league_read on leagues for select using (
-  exists (select 1 from league_members where league_id = leagues.id and user_id = auth.uid())
-);
+create policy league_read on leagues for select using (is_league_member(id));
 
 -- Membres : voir les membres de ses propres ligues
-create policy member_read on league_members for select using (
-  exists (select 1 from league_members me
-          where me.league_id = league_members.league_id and me.user_id = auth.uid())
-);
+create policy member_read on league_members for select using (is_league_member(league_id));
 
 -- PRONOS — règles clés :
 -- 1. Je lis toujours mes pronos.
 -- 2. Je lis ceux d'un autre SEULEMENT si on partage une ligue ET que le match a commencé.
 create policy pred_read on predictions for select using (
   user_id = auth.uid()
-  or exists (
-    select 1
-    from league_members me
-    join league_members them on them.league_id = me.league_id
-    join matches m on m.id = predictions.match_id
-    where me.user_id = auth.uid()
-      and them.user_id = predictions.user_id
-      and now() >= m.kickoff
+  or (
+    shares_league_with(user_id)
+    and exists (select 1 from matches m where m.id = predictions.match_id and now() >= m.kickoff)
   )
 );
 -- 3. J'écris/modifie uniquement mes pronos, uniquement AVANT le coup d'envoi,
