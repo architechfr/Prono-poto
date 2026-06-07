@@ -1230,7 +1230,46 @@ function vLigue(){
 
 /* ─── Modales create / join ────────────────────────────────── */
 function openModal(which){S.modal=which;renderModal()}
-function closeModal(){S.modal=null;renderModal()}
+function closeModal(){_qrStop();S.modal=null;renderModal()}
+
+/* ─── Scanner QR intégré (BarcodeDetector + caméra) ────────── */
+var _qrStream=null,_qrTimer=null;
+function _qrStop(){
+  if(_qrTimer){clearInterval(_qrTimer);_qrTimer=null}
+  if(_qrStream){try{_qrStream.getTracks().forEach(function(t){t.stop()})}catch(e){}_qrStream=null}
+}
+async function scanQR(){
+  if(!("BarcodeDetector" in window)||!navigator.mediaDevices){
+    toast("📷 Scanner non supporté ici — flashe le QR avec l'appareil photo du téléphone");
+    return;
+  }
+  S.modal="qrscan";renderModal();
+  try{
+    _qrStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+    var v=$("qrVideo");if(!v){_qrStop();return}
+    v.srcObject=_qrStream;await v.play();
+    var det=new BarcodeDetector({formats:["qr_code"]});
+    _qrTimer=setInterval(async function(){
+      try{
+        var codes=await det.detect(v);
+        if(!codes.length)return;
+        var raw=codes[0].rawValue||"";
+        var m=raw.match(/[?&]ligue=([A-Za-z0-9]{4,8})/);
+        var code=m?m[1].toUpperCase():(/^[A-Za-z0-9]{6}$/.test(raw.trim())?raw.trim().toUpperCase():null);
+        if(code){
+          _qrStop();
+          S.modal="join";renderModal();
+          setTimeout(function(){var i=$("inCode");if(i)i.value=code},60);
+          toast("✓ Code détecté : "+code);
+          if(navigator.vibrate)navigator.vibrate(60);
+        }
+      }catch(e){}
+    },350);
+  }catch(e){
+    closeModal();
+    toast("⚠️ Caméra indisponible — flashe le QR avec l'appareil photo");
+  }
+}
 function renderModal(){
   var host=$("modalHost");
   if(!S.modal){host.innerHTML="";return}
@@ -1250,7 +1289,8 @@ function renderModal(){
      +'<label class="flabel">Code de la ligue</label>'
      +'<input class="input code" id="inCode" maxlength="6" placeholder="CODE" value="'+esc(urlCode)+'">'
      +'<button class="btn" onclick="doJoin()">🚀 C\'est parti !</button>'
-     +'<div class="mini-hint" style="margin-top:4px">Tu n\'as pas de code ? Demande-le à l\'organisateur de ta ligue.</div></div>';
+     +'<button class="btn alt" onclick="scanQR()">📷 Flasher le QR code d\'un poto</button>'
+     +'<div class="mini-hint" style="margin-top:4px">Tu n\'as pas de code ? Demande-le à l\'organisateur de ta ligue, ou flashe son QR (Ma ligue).</div></div>';
   }else if(S.modal==="ffimport"){
     var pendData=_ffPending();
     var pendN=pendData?Object.keys(pendData).length:0;
@@ -1259,8 +1299,14 @@ function renderModal(){
      +'<div class="mini-hint" style="margin:0 0 10px">Choisis la ligue où les utiliser. Tu pourras les relire et les modifier avant de les 📤 publier.</div>'
      +(S.league?'<button class="btn" onclick="ffApplyPending()">✅ Les mettre dans « '+esc(S.league.name)+' »</button>':'')
      +'<button class="btn alt" onclick="closeModal();openModal(\'join\')">🔑 Rejoindre une '+(S.league?'autre ':'')+'ligue avec un code</button>'
+     +'<button class="btn alt" onclick="scanQR()">📷 Flasher le QR code d\'un poto</button>'
      +'<button class="btn alt" onclick="closeModal();openModal(\'create\')">➕ Créer une nouvelle ligue</button>'
      +'<div class="mini-hint" style="margin-top:6px">Tes pronos restent en attente — ils seront appliqués dès que tu entres dans une ligue.</div></div>';
+  }else if(S.modal==="qrscan"){
+    inner='<div class="sheet-title">📷 Flashe le QR d\'un poto</div>'
+     +'<video id="qrVideo" playsinline muted style="width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:18px;background:#000;border:1px solid var(--s3)"></video>'
+     +'<div class="mini-hint" style="margin-top:10px">Vise le QR code affiché dans « Ma ligue » sur le téléphone de ton poto. Le code se remplit tout seul dès qu\'il est détecté.</div>'
+     +'<button class="btn alt" style="margin-top:10px" onclick="closeModal()">Annuler</button>';
   }else if(S.modal==="published"){
     var n=S._pubCount||0;
     inner='<div class="form success"><div class="cs-emoji">📤</div>'
