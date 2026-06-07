@@ -578,10 +578,10 @@ function computeDemoStandings(){
       var p=(u.me&&S.pronos[m.id])?S.pronos[m.id]:genPred(i,m);
       return{user_id:u.user_id,s1:p.s1,s2:p.s2,boost:p.boost||1};
     });
-    var lone=lonelyExactUid(preds,m); // bonus seul au monde +2
+    var lone=lonelyExactUid(preds,m); // bonus seul au monde +200
     preds.forEach(function(x){
       var sc=computePoints(x,m);
-      if(lone===x.user_id)sc+=2;
+      if(lone===x.user_id)sc+=200;
       tot[x.user_id].pts+=sc;
       if(predOutcome(x,m)==="exact")tot[x.user_id].ex++;
       tot[x.user_id].seq.push(sc>0);
@@ -643,11 +643,14 @@ function fmtH(iso){return new Date(iso).toLocaleTimeString("fr-FR",{hour:"2-digi
 function countdown(iso){var ms=H(iso)-NOW();if(ms<=0)return "maintenant";
   var d=Math.floor(ms/864e5),h=Math.floor(ms%864e5/36e5),mn=Math.floor(ms%36e5/6e4);
   if(d>0)return "J-"+d+" "+h+"h";if(h>0)return "dans "+h+"h"+String(mn).padStart(2,"0");return "dans "+mn+" min"}
+/* Barème "gros points" : bon résultat = 100 · score exact = 300 (×3)
+   × Capitaine ⚡2 / Super ⭐3 → jusqu'à 900 pts sur un match.
+   (v2 prévue : buteur, score mi-temps... = bonus d'expérience) */
 function computePoints(p,m){
   if(m.score1==null||m.score2==null)return null;
   var base=0;
-  if(p.s1===m.score1&&p.s2===m.score2)base=3;
-  else if(Math.sign(p.s1-p.s2)===Math.sign(m.score1-m.score2))base=1;
+  if(p.s1===m.score1&&p.s2===m.score2)base=300;
+  else if(Math.sign(p.s1-p.s2)===Math.sign(m.score1-m.score2))base=100;
   return base*(p.boost||1);
 }
 function predOutcome(p,m){
@@ -811,7 +814,7 @@ function cycleBoost(id){
   else if(next===3)toast("⭐ Super capitaine ×3 — unique pour toute la "+superPhase(m)+" !");
   else toast("Capitaine retiré");
 }
-/* Bonus "Seul au monde" : +2 pts si tu es le SEUL de la ligue avec le score exact */
+/* Bonus "Seul au monde" : +200 pts si tu es le SEUL de la ligue avec le score exact */
 function lonelyExactUid(preds,m){
   if(m.score1==null)return null;
   var ex=preds.filter(function(f){return predOutcome(f,m)==="exact"});
@@ -844,7 +847,7 @@ function vOnboard(){
    +'<div class="valueprops">'
    +'<div class="vp"><span>📝</span><div><b>Pronostique</b> les 104 matchs</div></div>'
    +'<div class="vp"><span>🔒</span><div><b>Verrouillé</b> au coup d\'envoi — zéro triche</div></div>'
-   +'<div class="vp"><span>⚡</span><div><b>Capitaine ×2</b> par journée, <b>⭐ Super ×3</b> par phase, <b>🎯 +2</b> si t\'es le seul à voir juste</div></div>'
+   +'<div class="vp"><span>⚡</span><div>Bon résultat <b>100 pts</b>, score exact <b>300</b> — jusqu\'à <b>900</b> avec le Super capitaine ⭐</div></div>'
    +'</div>'
    +'<div class="onboard-cta">'
    +'<button class="btn" onclick="openModal(\'create\')">➕ Créer ma ligue</button>'
@@ -986,16 +989,16 @@ function vDetail(){
       var out=st==="played"?predOutcome(f,m):null;
       var pts=st==="played"?computePoints(f,m):null;
       var isLone=(lone&&lone===f.user_id);
-      if(isLone&&pts!=null)pts+=2;
+      if(isLone&&pts!=null)pts+=200;
       h+='<div class="friend'+(f.me?" me":"")+'">'+avatar(f.pseudo,38,f.me?"var(--g)":null)
        +'<div class="fr-mid"><div class="fr-name">'+esc(f.pseudo)+(f.me?'<span class="fr-you">toi</span>':'')+'</div>'
-       +'<div class="fr-dot '+(out||"")+'">'+(isLone?"🎯 seul au monde ! (+2)":out==="exact"?"score exact":out==="good"?"bon résultat":out==="miss"?"raté":"en jeu")+'</div></div>'
+       +'<div class="fr-dot '+(out||"")+'">'+(isLone?"🎯 seul au monde ! (+200)":out==="exact"?"score exact":out==="good"?"bon résultat":out==="miss"?"raté":"en jeu")+'</div></div>'
        +'<div class="fr-pred">'+f.s1+'-'+f.s2+((f.boost||1)>1?'<span class="fr-boost">'+(f.boost===3?"⭐":"⚡")+'×'+f.boost+'</span>':'')+'</div>'
        +'<div class="fr-pts '+(out||"pending")+'">'+(pts!=null?((pts>0?"+":"")+pts):"—")+'</div></div>';
     });
     h+='</div>';
   }
-  h+='<div class="legend">Barème : exact <b>3 pts</b> · bon résultat <b>1 pt</b> · ⚡ Capitaine ×2 · ⭐ Super ×3 · 🎯 seul au monde +2</div>';
+  h+='<div class="legend">Barème : bon résultat <b>100</b> · score exact <b>300</b> · ⚡ Capitaine ×2 · ⭐ Super ×3 · 🎯 seul au monde +200</div>';
   return h;
 }
 function vClassement(){
@@ -1048,10 +1051,10 @@ function vLigue(){
   });
   h+='<div class="mb add" onclick="shareLink()"><div class="mb-add">＋</div><span>Inviter</span></div></div>';
   h+='<div class="card rules"><div class="rules-h">⚖️ Règles du jeu</div><ul>'
-   +'<li>Score exact : <b class="g">3 pts</b> · bon résultat (1/N/2) : <b class="g">1 pt</b></li>'
+   +'<li>Bon résultat (1/N/2) : <b class="g">100 pts</b> · score exact : <b class="g">300 pts</b></li>'
    +'<li>⚡ <b>Capitaine ×2</b> : un seul match par journée — choisis bien !</li>'
    +'<li>⭐ <b>Super capitaine ×3</b> : un seul pour les groupes, un seul pour la phase finale</li>'
-   +'<li>🎯 <b>Seul au monde +2</b> : bonus si tu es le seul de la ligue avec le score exact</li>'
+   +'<li>🎯 <b>Seul au monde +200</b> : bonus si tu es le seul de la ligue avec le score exact</li>'
    +'<li>Pronos modifiables jusqu\'au coup d\'envoi, puis 🔒 verrouillés par le serveur</li>'
    +'<li>Les pronos des potos n\'apparaissent qu\'après le coup d\'envoi</li></ul></div>';
   h+='<div class="leave"><button onclick="leaveLeague()">🚪 Quitter la ligue sur cet appareil</button></div>';

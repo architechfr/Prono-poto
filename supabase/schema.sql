@@ -210,9 +210,10 @@ before insert or update on predictions
 for each row execute function check_boost_quota();
 
 -- ============================================================
--- VUE CLASSEMENT — scoring :
--- exact = 3 pts · bon résultat = 1 pt · × boost (⚡2/⭐3)
--- + bonus 🎯 "Seul au monde" : +2 si unique score exact de la ligue
+-- VUE CLASSEMENT — barème "gros points" :
+-- bon résultat = 100 pts · score exact = 300 pts · × boost (⚡2/⭐3)
+-- + bonus 🎯 "Seul au monde" : +200 si unique score exact de la ligue
+-- (max : 300 × 3 + 200 = 1100 pts sur un match)
 -- ============================================================
 create or replace view league_standings
 with (security_invoker = true) as
@@ -220,8 +221,8 @@ with base as (
   select lm.league_id, lm.user_id, p.match_id, p.boost,
     (p.score1 = m.score1 and p.score2 = m.score2) as is_exact,
     case
-      when p.score1 = m.score1 and p.score2 = m.score2 then 3 * p.boost
-      when sign(p.score1 - p.score2) = sign(m.score1 - m.score2) then 1 * p.boost
+      when p.score1 = m.score1 and p.score2 = m.score2 then 300 * p.boost
+      when sign(p.score1 - p.score2) = sign(m.score1 - m.score2) then 100 * p.boost
       else 0 end as pts
   from league_members lm
   join predictions p on p.user_id = lm.user_id
@@ -237,7 +238,7 @@ select
   lm.league_id,
   lm.user_id,
   pr.pseudo,
-  coalesce(sum(b.pts + case when b.is_exact and l.match_id is not null then 2 else 0 end), 0)::int as points,
+  coalesce(sum(b.pts + case when b.is_exact and l.match_id is not null then 200 else 0 end), 0)::int as points,
   count(b.match_id)::int as played,
   count(*) filter (where b.is_exact)::int as exacts
 from league_members lm
