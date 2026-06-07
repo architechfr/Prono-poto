@@ -1003,7 +1003,8 @@ function vPronos(){
    +'<div class="ls-sub">'+(S.members||"–")+' potos · code '+esc(S.league.code)+'</div></div>'
    +'<div class="ls-rank"><div class="ls-rank-pos">'+(meIdx===0?"🥇":meIdx===1?"🥈":meIdx===2?"🥉":meIdx>=0?("#"+(meIdx+1)):"–")+'</div>'
    +'<div class="ls-rank-pts">'+(me?me.points:0)+' pts</div></div></div>';
-  h+='<div class="sec"><span>📝 Mes pronos</span></div>';
+  h+='<div class="sec"><span>📝 Mes pronos</span>'
+   +'<span class="sec-count" style="cursor:pointer;color:var(--g)" onclick="importFromFootFlash()">📥 Importer de Foot Flash</span></div>';
   h+='<div class="chips">'+STAGES.map(function(s){
     return '<button class="chip'+(s===S.phase?" on":"")+'" onclick="S.phase=\''+s+'\';render()">'+s+'</button>'}).join("")+'</div>';
   var visible=S.matches.filter(function(m){return S.phase==="Tout"||stageBucket(m.stage)===S.phase});
@@ -1243,6 +1244,42 @@ function render(){
   $("app").innerHTML=S.detail?vDetail():S.view==="classement"?vClassement():S.view==="ligue"?vLigue():vPronos();
 }
 async function refresh(){await loadMatches();await loadStandings();render();toast("🔄 À jour")}
+
+/* ─── Import des pronos Foot Flash ─────────────────────────────
+   Même domaine (architechfr.github.io) : lecture directe du
+   localStorage "ff26_pronos" ({id:{a,b}}). Depuis l'APK (storage
+   séparé) : lien ?ffimport=<base64> généré par Foot Flash.
+   Les IDs de matchs sont identiques dans les deux apps. */
+function ffImportApply(data){
+  var n=0,locked=0;
+  Object.keys(data).forEach(function(k){
+    var id=+k;
+    var m=S.matches.find(function(x){return x.id===id});
+    if(!m||!m.team1||!m.team2)return;
+    if(matchState(m)!=="open"){locked++;return}
+    var v=data[k];
+    if(!v||v.a==null||v.b==null)return;
+    var p=S.pronos[id]||{boost:1};
+    p.s1=Math.max(0,Math.min(20,+v.a||0));
+    p.s2=Math.max(0,Math.min(20,+v.b||0));
+    S.pronos[id]=p;markDirty(id);n++;
+  });
+  if(n)save();
+  render();
+  toast(n?("📥 "+n+" pronos Foot Flash importés"+(locked?" · "+locked+" verrouillés ignorés":"")+" — pense à 📤 Publier !")
+         :"Aucun prono importable (matchs verrouillés ?)");
+}
+function importFromFootFlash(){
+  var data=null;
+  // 1) lien d'import en attente (venu de l'APK)
+  try{var pend=localStorage.getItem("ppff_ffimport");if(pend){data=JSON.parse(pend);localStorage.removeItem("ppff_ffimport")}}catch(e){}
+  // 2) sinon : pronos Foot Flash web (même domaine)
+  if(!data){try{data=JSON.parse(localStorage.getItem("ff26_pronos")||"null")}catch(e){}}
+  if(!data||!Object.keys(data).length){toast("Aucun prono Foot Flash sur cet appareil");return}
+  var conflicts=Object.keys(data).filter(function(k){return S.pronos[+k]&&S.pronos[+k].s1!=null}).length;
+  if(conflicts&&!confirm("Écraser "+conflicts+" prono(s) déjà saisi(s) dans Prono Poto ?"))return;
+  ffImportApply(data);
+}
 async function boot(){
   await loadMatches();
   // Démo : seed des pronos fictifs au premier lancement (matchs verrouillés + 3 à publier)
@@ -1253,7 +1290,18 @@ async function boot(){
 }
 (async function init(){
   await boot();
-  var urlCode=new URLSearchParams(location.search).get("ligue");
+  var qs=new URLSearchParams(location.search);
+  // Lien d'import Foot Flash (?ffimport=base64) — depuis l'APK ou un autre appareil
+  var ffi=qs.get("ffimport");
+  if(ffi){
+    try{
+      var data=JSON.parse(atob(decodeURIComponent(ffi)));
+      if(S.league){ffImportApply(data)}
+      else{localStorage.setItem("ppff_ffimport",JSON.stringify(data));toast("📥 Pronos reçus — rejoins ta ligue puis Importer")}
+    }catch(e){toast("⚠️ Lien d'import invalide")}
+    history.replaceState(null,"",location.pathname);
+  }
+  var urlCode=qs.get("ligue");
   if(!S.league&&urlCode){S.view="onboard";render();openModal("join");}
   else{S.view=S.league?"pronos":"onboard";render();}
 })();
