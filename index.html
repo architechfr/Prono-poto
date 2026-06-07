@@ -607,7 +607,7 @@ var ALL_MATCHES=[
    date simulée ; pronos des 8 potos générés pareil ; classement et
    streaks CALCULÉS depuis ces données (plus de chiffres en dur). ── */
 var DEMO_MEMBERS=[
- {user_id:"u_flo",pseudo:"Flo la Science",me:true},
+ {user_id:"u_flo",pseudo:"Momo du five",me:true},
  {user_id:"u_max",pseudo:"Maxou"},
  {user_id:"u_lea",pseudo:"Léa"},
  {user_id:"u_kar",pseudo:"Karim DTC"},
@@ -1240,13 +1240,13 @@ function renderModal(){
      +'<label class="flabel">Nom de ta ligue</label>'
      +'<input class="input" id="inName" maxlength="30" placeholder="Ex : Les Cadors du PMU">'
      +'<label class="flabel">Ton pseudo</label>'
-     +'<input class="input" id="inPseudo" maxlength="20" placeholder="Ex : Flo la Science" value="'+esc(S.pseudo)+'">'
+     +'<input class="input" id="inPseudo" maxlength="20" placeholder="Ex : Momo du five" value="'+esc(S.pseudo)+'">'
      +'<button class="btn" onclick="doCreate()">🏆 Créer la ligue</button></div>';
   }else if(S.modal==="join"){
     var urlCode=new URLSearchParams(location.search).get("ligue")||"";
     inner='<div class="sheet-title">🔑 Rejoindre une ligue</div><div class="form">'
      +'<label class="flabel">Ton pseudo</label>'
-     +'<input class="input" id="inPseudo" maxlength="20" placeholder="Ex : Flo la Science" value="'+esc(S.pseudo)+'">'
+     +'<input class="input" id="inPseudo" maxlength="20" placeholder="Ex : Momo du five" value="'+esc(S.pseudo)+'">'
      +'<label class="flabel">Code de la ligue</label>'
      +'<input class="input code" id="inCode" maxlength="6" placeholder="CODE" value="'+esc(urlCode)+'">'
      +'<button class="btn" onclick="doJoin()">🚀 C\'est parti !</button>'
