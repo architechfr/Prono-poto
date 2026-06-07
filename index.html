@@ -58,6 +58,19 @@ h1,h2{font-weight:900;letter-spacing:.5px}
 .ff-back{font-size:11px;font-weight:800;color:var(--t2);text-decoration:none;white-space:nowrap;
   border:1px solid var(--s3);padding:6px 11px;border-radius:99px;background:rgba(20,38,74,.55);transition:.15s}
 .ff-back:active{color:var(--g);border-color:var(--g)}
+/* ── Mes ligues (switcher) ── */
+.leagues-list{margin:0 16px}
+.lg-row{display:flex;align-items:center;gap:11px;padding:11px 13px;margin-bottom:7px;cursor:pointer;
+  background:linear-gradient(165deg, rgba(22,38,72,.7), rgba(13,24,48,.66));
+  border:1px solid var(--gbord);border-radius:14px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:.15s}
+.lg-row.active{border-color:rgba(231,196,92,.5);background:linear-gradient(120deg, rgba(231,196,92,.16), rgba(13,24,48,.7))}
+.lg-row:active{transform:scale(.985)}
+.lg-ico{font-size:20px}
+.lg-mid{flex:1;min-width:0}
+.lg-name{font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-code{font-size:10px;color:var(--t2);font-weight:700;letter-spacing:1px}
+.lg-tag{font-size:9px;font-weight:900;background:var(--g);color:var(--ink);padding:3px 9px;border-radius:99px;letter-spacing:.5px;text-transform:uppercase}
+.lg-go{color:var(--t2);font-size:18px;font-weight:800}
 
 /* ── main / nav ── */
 .main{flex:1 1 auto;padding-bottom:104px}
@@ -673,11 +686,14 @@ var S={
   view:"onboard", detail:null, modal:null, phase:"Tout",
   pseudo:localStorage.getItem("ppff_pseudo")||"",
   league:JSON.parse(localStorage.getItem("ppff_league")||"null"),
+  leagues:JSON.parse(localStorage.getItem("ppff_leagues")||"null")||[],
   userId:localStorage.getItem("ppff_user")||null,
   pronos:(_storedPronos&&Object.keys(_storedPronos).length)?_storedPronos:{},
   dirty:JSON.parse(localStorage.getItem("ppff_dirty")||"null")||[],
   matches:[], standings:[], friendPreds:{}, members:0
 };
+// Migration multi-ligues : la ligue déjà enregistrée rejoint la liste
+if(S.league&&!S.leagues.length)S.leagues=[S.league];
 var STAGES=["Tout","Groupes","16es","8es","Quarts","Demi","Finale"];
 function stageBucket(st){
   if(!st)return "Groupes";
@@ -700,7 +716,30 @@ function save(){
   localStorage.setItem("ppff_dirty",JSON.stringify(S.dirty));
   if(S.league)localStorage.setItem("ppff_league",JSON.stringify(S.league));
   else localStorage.removeItem("ppff_league");
+  localStorage.setItem("ppff_leagues",JSON.stringify(S.leagues||[]));
   if(S.userId)localStorage.setItem("ppff_user",S.userId);
+}
+/* ─── Multi-ligues : on peut être membre de plusieurs ligues ──
+   S.leagues = toutes mes ligues ; S.league = la ligue ACTIVE
+   (classement et pronos des potos affichés). Les pronos sont
+   liés à TON compte : publiés une fois, ils comptent dans
+   toutes tes ligues. */
+function _leagueKey(l){return (l&&(l.id||""))+"|"+(l&&(l.code||""))}
+function addLeague(l){
+  if(!l)return;
+  if(!S.leagues)S.leagues=[];
+  var k=_leagueKey(l);
+  if(!S.leagues.some(function(x){return _leagueKey(x)===k}))S.leagues.push(l);
+  S.league=l;
+  save();
+}
+async function switchLeague(key){
+  var l=(S.leagues||[]).filter(function(x){return _leagueKey(x)===key})[0];
+  if(!l||_leagueKey(S.league)===key)return;
+  S.league=l;save();
+  toast("🏆 Ligue active : "+l.name);
+  render();
+  await loadStandings();render();
 }
 function H(iso){return new Date(iso).getTime()}
 function matchState(m){
@@ -809,14 +848,14 @@ async function loadFriendPreds(matchId){
 }
 async function apiCreateLeague(name){
   if(DEMO){var A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",c="";for(var i=0;i<6;i++)c+=A[(Math.random()*A.length)|0];
-    S.league={id:"demo",code:c,name:name};return S.league}
+    addLeague({id:"demo-"+c,code:c,name:name});return S.league}
   var r=await sb.rpc("create_league",{p_name:name});if(r.error)throw r.error;
-  S.league=r.data;return r.data;
+  addLeague(r.data);return r.data;
 }
 async function apiJoinLeague(code){
-  if(DEMO){S.league={id:"demo",code:code.toUpperCase(),name:"Les Cadors du PMU"};return S.league}
+  if(DEMO){addLeague({id:"demo-"+code.toUpperCase(),code:code.toUpperCase(),name:"Les Cadors du PMU"});return S.league}
   var r=await sb.rpc("join_league",{p_code:code});if(r.error)throw r.error;
-  S.league=r.data;return r.data;
+  addLeague(r.data);return r.data;
 }
 async function publishPronos(){
   var ids=S.dirty.slice();
@@ -921,8 +960,16 @@ function shareLink(){
   else copyLink();
 }
 function leaveLeague(){
-  if(!confirm("Quitter la ligue sur cet appareil ? (tes pronos publiés restent au classement)"))return;
-  S.league=null;save();go("onboard");
+  if(!confirm("Quitter « "+(S.league?S.league.name:"")+" » sur cet appareil ? (tes pronos publiés restent au classement)"))return;
+  var k=_leagueKey(S.league);
+  S.leagues=(S.leagues||[]).filter(function(x){return _leagueKey(x)!==k});
+  if(S.leagues.length){
+    S.league=S.leagues[0];save();
+    toast("🏆 Ligue active : "+S.league.name);
+    go("ligue");loadStandings().then(render);
+  }else{
+    S.league=null;save();go("onboard");
+  }
 }
 async function openDetail(id){
   S.detail=id;render();
@@ -1007,7 +1054,7 @@ function vPronos(){
   var h='<div class="league-strip" onclick="go(\'ligue\')">'
    +'<div class="ls-trophy">🏆</div><div class="ls-mid">'
    +'<div class="ls-name">'+esc(S.league.name)+'</div>'
-   +'<div class="ls-sub">'+(S.members||"–")+' potos · code '+esc(S.league.code)+'</div></div>'
+   +'<div class="ls-sub">'+(S.members||"–")+' potos · code '+esc(S.league.code)+((S.leagues||[]).length>1?' · '+S.leagues.length+' ligues':'')+'</div></div>'
    +'<div class="ls-rank"><div class="ls-rank-pos">'+(meIdx===0?"🥇":meIdx===1?"🥈":meIdx===2?"🥉":meIdx>=0?("#"+(meIdx+1)):"–")+'</div>'
    +'<div class="ls-rank-pts">'+(me?me.points:0)+' pts</div></div></div>';
   h+='<div class="sec"><span>📝 Mes pronos</span>'
@@ -1137,7 +1184,23 @@ function vClassement(){
 }
 function vLigue(){
   var link=inviteLink().replace(/^https?:\/\//,"");
-  var h='<div class="sec"><span>👥 Ma ligue</span></div>';
+  var h='';
+  // ── Mes ligues : switcher (on peut être membre de plusieurs ligues) ──
+  if((S.leagues||[]).length>1){
+    h+='<div class="sec"><span>🏟️ Mes ligues ('+S.leagues.length+')</span></div>';
+    h+='<div class="leagues-list">';
+    S.leagues.forEach(function(l){
+      var active=_leagueKey(l)===_leagueKey(S.league);
+      h+='<div class="lg-row'+(active?" active":"")+'" onclick="switchLeague(\''+esc(_leagueKey(l))+'\')">';
+      h+='<span class="lg-ico">'+(active?"🏆":"🛡️")+'</span>';
+      h+='<div class="lg-mid"><div class="lg-name">'+esc(l.name)+'</div><div class="lg-code">code '+esc(l.code)+'</div></div>';
+      h+=(active?'<span class="lg-tag">active</span>':'<span class="lg-go">›</span>');
+      h+='</div>';
+    });
+    h+='</div>';
+  }
+  h+='<div class="sec"><span>👥 Ligue active</span>'
+   +'<span class="sec-count" style="cursor:pointer;color:var(--g)" onclick="openModal(\'join\')">🔑 Rejoindre une autre ligue</span></div>';
   h+='<div class="invite"><div class="iv-name">'+esc(S.league.name)+'</div>'
    +'<div class="iv-label">Code de la ligue</div><div class="iv-code">'+esc(S.league.code)+'</div>'
    +'<div class="iv-qr"><span class="qr">'+qrSvg(inviteLink(),150)+'</span></div>'
