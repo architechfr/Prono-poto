@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Prono Poto ⚽ Pronos entre amis</title>
+<meta name="theme-color" content="#0d1421">
+<meta name="description" content="Prono Poto — défie tes potes sur la Coupe du Monde 2026. Pronos verrouillés au coup d'envoi, classement en direct.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d1421; --card:#151f33; --card2:#1c2942; --line:#27375a;
+  --green:#21d07a; --green-d:#149055; --yellow:#ffd84d; --red:#ff4d6a;
+  --tx:#eef3fb; --t2:#8da3c4; --r:16px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--tx);font-family:'Nunito',sans-serif;font-size:15px;
+  max-width:520px;margin:0 auto;padding-bottom:90px;min-height:100vh}
+h1,h2,.brand{font-family:'Lilita One',cursive;letter-spacing:.5px}
+.top{padding:18px 16px 10px;display:flex;align-items:center;justify-content:space-between}
+.brand{font-size:26px;color:var(--green)}
+.brand span{color:var(--yellow)}
+.demo-pill{font-size:10px;font-weight:900;background:var(--yellow);color:#000;
+  padding:3px 10px;border-radius:99px}
+.sec{font-family:'Lilita One',cursive;font-size:17px;color:var(--yellow);margin:18px 16px 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:16px;margin:0 16px 12px}
+.btn{display:block;width:100%;padding:15px;border:none;border-radius:14px;cursor:pointer;
+  font-family:'Nunito',sans-serif;font-size:16px;font-weight:900;background:var(--green);color:#04220f}
+.btn.alt{background:var(--card2);color:var(--tx);border:1px solid var(--line)}
+.btn:active{transform:scale(.98)}
+input[type=text]{width:100%;padding:14px;background:var(--card2);border:2px solid var(--line);
+  border-radius:12px;color:var(--tx);font-size:16px;font-weight:700;font-family:inherit;outline:none;text-align:center}
+input[type=text]:focus{border-color:var(--green)}
+.code-input{letter-spacing:8px;text-transform:uppercase;font-size:22px}
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;
+  display:flex;background:rgba(13,20,33,.97);border-top:1px solid var(--line);padding:8px 0 calc(8px + env(safe-area-inset-bottom))}
+.nav button{flex:1;background:none;border:none;color:var(--t2);font-family:inherit;font-size:11px;
+  font-weight:800;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.nav button.on{color:var(--green)}
+.nav button .ico{font-size:22px}
+.match{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px;margin:0 16px 10px}
+.match.locked{opacity:.75}
+.m-head{display:flex;justify-content:space-between;font-size:11px;color:var(--t2);font-weight:700;margin-bottom:8px}
+.m-row{display:flex;align-items:center;gap:8px}
+.m-team{flex:1;font-weight:800;font-size:15px}
+.m-team.right{text-align:right}
+.step{display:flex;align-items:center;gap:4px}
+.step button{width:30px;height:34px;border:none;border-radius:8px;background:var(--card2);
+  color:var(--green);font-size:18px;font-weight:900;cursor:pointer}
+.step .val{min-width:30px;text-align:center;font-size:20px;font-weight:900;color:var(--yellow)}
+.boost-btn{margin-left:6px;padding:6px 9px;border-radius:99px;border:1px solid var(--line);
+  background:var(--card2);color:var(--t2);font-weight:900;font-size:12px;cursor:pointer;font-family:inherit}
+.boost-btn.on{background:var(--yellow);color:#000;border-color:var(--yellow)}
+.lock{font-size:11px;color:var(--red);font-weight:800}
+.day-h{margin:14px 16px 8px;font-size:12px;font-weight:900;color:var(--t2);text-transform:uppercase}
+.rank{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--card);
+  border:1px solid var(--line);border-radius:12px;margin:0 16px 6px}
+.rank.me{border-color:var(--green);background:rgba(33,208,122,.08)}
+.rank .pos{font-size:16px;min-width:28px;text-align:center}
+.rank .who{flex:1;font-weight:800}
+.rank .pts{font-weight:900;color:var(--green);font-size:16px}
+.rank .sub{font-size:10px;color:var(--t2)}
+.league-code{display:flex;align-items:center;justify-content:center;gap:10px;margin:8px 0}
+.league-code b{font-family:'Lilita One',cursive;font-size:30px;letter-spacing:6px;color:var(--yellow)}
+.hint{font-size:12px;color:var(--t2);line-height:1.5;text-align:center}
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#000;color:#fff;
+  padding:11px 20px;border-radius:99px;font-weight:800;font-size:13px;z-index:99;border:1px solid var(--green);
+  opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.tag{font-size:9px;font-weight:900;padding:2px 8px;border-radius:99px;background:var(--card2);color:var(--t2)}
+.center{text-align:center}
+.big-emoji{font-size:52px;text-align:center;margin:10px 0}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">PRONO <span>POTO</span> ⚽</div>
+  <div id="modePill"></div>
+</div>
+<div id="app"></div>
+<div class="nav" id="nav" style="display:none">
+  <button id="nav-pronos" onclick="go('pronos')"><span class="ico">📝</span>Pronos</button>
+  <button id="nav-classement" onclick="go('classement')"><span class="ico">🏆</span>Classement</button>
+  <button id="nav-ligue" onclick="go('ligue')"><span class="ico">👥</span>Ma ligue</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ════════════════════════════════════════════════════════════
+   PRONO POTO v0.1 — prototype
+   - SANS clés ci-dessous : MODE DÉMO (tout en local, faux potos)
+   - AVEC clés : Supabase réel (exécuter d'abord supabase/schema.sql
+     + seed_matches.sql — voir README.md)
+   ════════════════════════════════════════════════════════════ */
+var SUPA_URL = "";        // ex: "https://xxxx.supabase.co"
+var SUPA_ANON_KEY = "";   // Dashboard > Settings > API > anon public
+
+var DEMO = !(SUPA_URL && SUPA_ANON_KEY);
+var sb = DEMO ? null : supabase.createClient(SUPA_URL, SUPA_ANON_KEY);
+
+/* ─── État ─────────────────────────────────────────────────── */
+var S = {
+  view: "onboard",
+  pseudo: localStorage.getItem("pp_pseudo") || "",
+  league: JSON.parse(localStorage.getItem("pp_league") || "null"), // {id,code,name}
+  pronos: JSON.parse(localStorage.getItem("pp_pronos") || "{}"),   // {matchId:{s1,s2,boost}}
+  userId: localStorage.getItem("pp_user") || null,
+  matches: [],        // chargés depuis Supabase ou DEMO_MATCHES
+  standings: [],
+  dirty: JSON.parse(localStorage.getItem("pp_dirty") || "[]")      // ids non publiés
+};
+
+/* ─── Données démo (mode sans clés) ────────────────────────── */
+var DEMO_MATCHES = [
+  {id:49,kickoff:"2026-06-16T19:00:00+02:00",stage:"Groupe I",team1:"FRA",team2:"SEN",stadium:"MetLife Stadium",city:"New York",score1:null,score2:null},
+  {id:50,kickoff:"2026-06-16T22:00:00+02:00",stage:"Groupe I",team1:"IRQ",team2:"NOR",stadium:"MetLife Stadium",city:"New York",score1:null,score2:null},
+  {id:51,kickoff:"2026-06-22T21:00:00+02:00",stage:"Groupe I",team1:"FRA",team2:"IRQ",stadium:"Lincoln Financial",city:"Philadelphie",score1:null,score2:null},
+  {id:53,kickoff:"2026-06-26T19:00:00+02:00",stage:"Groupe I",team1:"NOR",team2:"FRA",stadium:"Gillette Stadium",city:"Boston",score1:null,score2:null},
+  {id:1,kickoff:"2026-06-11T19:00:00+02:00",stage:"Groupe A",team1:"MEX",team2:"KOR",stadium:"Estadio Azteca",city:"Mexico City",score1:2,score2:1},
+  {id:2,kickoff:"2026-06-11T22:00:00+02:00",stage:"Groupe A",team1:"RSA",team2:"CZE",stadium:"AT&T Stadium",city:"Dallas",score1:0,score2:0}
+];
+var DEMO_STANDINGS = [
+  {pseudo:"Max",points:14,played:2,exacts:2},
+  {pseudo:"Léa",points:8,played:2,exacts:1},
+  {pseudo:"Karim",points:4,played:2,exacts:0}
+];
+var FLAGS = {FRA:"🇫🇷",SEN:"🇸🇳",IRQ:"🇮🇶",NOR:"🇳🇴",MEX:"🇲🇽",KOR:"🇰🇷",RSA:"🇿🇦",CZE:"🇨🇿",
+  BRA:"🇧🇷",ARG:"🇦🇷",ESP:"🇪🇸",GER:"🇩🇪",ENG:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",POR:"🇵🇹",NED:"🇳🇱",BEL:"🇧🇪",CRO:"🇭🇷",MAR:"🇲🇦",
+  USA:"🇺🇸",CAN:"🇨🇦",JPN:"🇯🇵",SUI:"🇨🇭",URU:"🇺🇾",COL:"🇨🇴",AUT:"🇦🇹",TUR:"🇹🇷",AUS:"🇦🇺",
+  SCO:"🏴󠁧󠁢󠁳󠁣󠁴󠁿",HAI:"🇭🇹",PAR:"🇵🇾",CIV:"🇨🇮",ECU:"🇪🇨",CUR:"🇨🇼",SWE:"🇸🇪",TUN:"🇹🇳",IRN:"🇮🇷",
+  NZL:"🇳🇿",EGY:"🇪🇬",KSA:"🇸🇦",CPV:"🇨🇻",JOR:"🇯🇴",ALG:"🇩🇿",UZB:"🇺🇿",COD:"🇨🇩",GHA:"🇬🇭",
+  PAN:"🇵🇦",QAT:"🇶🇦",BIH:"🇧🇦"};
+function flag(c){return FLAGS[c]||"🏳️"}
+
+/* ─── Utils ────────────────────────────────────────────────── */
+function $(id){return document.getElementById(id)}
+function toast(msg){var t=$("toast");t.textContent=msg;t.classList.add("show");
+  clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove("show")},2600)}
+function save(){
+  localStorage.setItem("pp_pseudo",S.pseudo);
+  localStorage.setItem("pp_pronos",JSON.stringify(S.pronos));
+  localStorage.setItem("pp_dirty",JSON.stringify(S.dirty));
+  if(S.league)localStorage.setItem("pp_league",JSON.stringify(S.league));
+  if(S.userId)localStorage.setItem("pp_user",S.userId);
+}
+function isLocked(m){return new Date(m.kickoff).getTime()<=Date.now()}
+function fmtDay(d){return new Date(d).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})}
+function fmtH(d){return new Date(d).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}
+function markDirty(id){if(S.dirty.indexOf(id)<0)S.dirty.push(id)}
+
+/* ─── Supabase ─────────────────────────────────────────────── */
+async function ensureAuth(){
+  if(DEMO){S.userId=S.userId||"demo-user";return}
+  var sess=(await sb.auth.getSession()).data.session;
+  if(!sess){var r=await sb.auth.signInAnonymously();
+    if(r.error)throw r.error; sess=r.data.session}
+  S.userId=sess.user.id;
+  await sb.from("profiles").upsert({id:S.userId,pseudo:S.pseudo});
+}
+async function loadMatches(){
+  if(DEMO){S.matches=DEMO_MATCHES;return}
+  var r=await sb.from("matches").select("*").order("kickoff");
+  if(r.error){toast("⚠️ "+r.error.message);return}
+  S.matches=r.data;
+}
+async function loadStandings(){
+  if(DEMO){
+    var mine={pseudo:S.pseudo||"Toi",points:11,played:2,exacts:1,me:true};
+    S.standings=DEMO_STANDINGS.concat([mine]).sort(function(a,b){return b.points-a.points||b.exacts-a.exacts});
+    return;
+  }
+  if(!S.league)return;
+  var r=await sb.from("league_standings").select("*").eq("league_id",S.league.id)
+    .order("points",{ascending:false}).order("exacts",{ascending:false});
+  if(r.error){toast("⚠️ "+r.error.message);return}
+  S.standings=r.data.map(function(x){x.me=(x.user_id===S.userId);return x});
+}
+async function createLeague(name){
+  if(DEMO){S.league={id:"demo",code:"DEMO42",name:name};return S.league}
+  var r=await sb.rpc("create_league",{p_name:name});
+  if(r.error)throw r.error; S.league=r.data; return r.data;
+}
+async function joinLeague(code){
+  if(DEMO){S.league={id:"demo",code:code.toUpperCase(),name:"Ligue démo"};return S.league}
+  var r=await sb.rpc("join_league",{p_code:code});
+  if(r.error)throw r.error; S.league=r.data; return r.data;
+}
+async function publishPronos(){
+  var ids=S.dirty.slice();
+  if(!ids.length){toast("✅ Tout est déjà publié");return}
+  if(DEMO){S.dirty=[];save();toast("📤 "+ids.length+" pronos publiés (démo)");render();return}
+  var rows=ids.map(function(id){var p=S.pronos[id];
+    return {user_id:S.userId,match_id:parseInt(id),score1:p.s1,score2:p.s2,boost:p.boost||1}});
+  var r=await sb.from("predictions").upsert(rows);
+  if(r.error){ // typiquement : match commencé → refus RLS
+    toast("⚠️ Refusé (match commencé ?) : "+r.error.message); return;
+  }
+  S.dirty=[];save();toast("📤 "+rows.length+" pronos publiés !");render();
+}
+
+/* ─── Actions UI ───────────────────────────────────────────── */
+function setScore(id,side,delta){
+  var m=S.matches.find(function(x){return x.id===id});
+  if(isLocked(m)){toast("🔒 Match commencé");return}
+  var p=S.pronos[id]||{s1:0,s2:0,boost:1};
+  p[side]=Math.max(0,Math.min(20,(p[side]||0)+delta));
+  S.pronos[id]=p;markDirty(id);save();render();
+}
+function cycleBoost(id){
+  var m=S.matches.find(function(x){return x.id===id});
+  if(isLocked(m)){toast("🔒 Match commencé");return}
+  var opts=[1,2,3,5],p=S.pronos[id];
+  if(!p){toast("Saisis d'abord un score");return}
+  p.boost=opts[(opts.indexOf(p.boost||1)+1)%opts.length];
+  markDirty(id);save();render();
+  toast(p.boost>1?("⚡ Boost ×"+p.boost+" — points multipliés !"):"Boost retiré");
+}
+function copyCode(){
+  var c=S.league?S.league.code:"";
+  if(navigator.clipboard)navigator.clipboard.writeText(location.origin+location.pathname+"?ligue="+c);
+  toast("📋 Lien d'invitation copié !");
+}
+function logout(){
+  if(!confirm("Quitter la ligue sur cet appareil ? (tes pronos publiés restent au classement)"))return;
+  localStorage.removeItem("pp_league");S.league=null;go("onboard");
+}
+
+/* ─── Vues ─────────────────────────────────────────────────── */
+function vOnboard(){
+  var urlCode=new URLSearchParams(location.search).get("ligue")||"";
+  return '<div class="big-emoji">⚽🍻</div>'
+    +'<div class="card center"><h2 style="margin-bottom:6px">Défie tes potos sur le Mondial !</h2>'
+    +'<div class="hint">Pronostique les 104 matchs. Pronos bloqués au coup d\'envoi — pas de triche possible. Score exact = 3 pts, bon résultat = 1 pt, boost ⚡ jusqu\'à ×5.</div></div>'
+    +'<div class="card">'
+    +'<div style="font-weight:900;margin-bottom:8px">1️⃣ Ton pseudo</div>'
+    +'<input type="text" id="inPseudo" maxlength="20" placeholder="Ex : Flo la Science" value="'+(S.pseudo||"")+'">'
+    +'<div style="font-weight:900;margin:16px 0 8px">2️⃣ Rejoins ou crée une ligue</div>'
+    +'<input type="text" id="inCode" class="code-input" maxlength="6" placeholder="CODE" value="'+urlCode+'">'
+    +'<div style="height:10px"></div>'
+    +'<button class="btn" onclick="doJoin()">🔑 Rejoindre la ligue</button>'
+    +'<div style="height:8px"></div>'
+    +'<button class="btn alt" onclick="doCreate()">➕ Créer ma ligue</button>'
+    +'</div>'
+    +(DEMO?'<div class="hint" style="margin:0 24px">Mode démo : aucune clé Supabase configurée — tout reste sur cet appareil. Voir README.md pour brancher le vrai backend.</div>':'');
+}
+async function doJoin(){
+  var ps=$("inPseudo").value.trim(),code=$("inCode").value.trim();
+  if(ps.length<2){toast("Pseudo trop court");return}
+  if(code.length!==6){toast("Code à 6 caractères");return}
+  S.pseudo=ps;save();
+  try{await ensureAuth();await joinLeague(code);save();
+    toast("🎉 Bienvenue dans « "+S.league.name+" » !");await boot();go("pronos");
+  }catch(e){toast("⚠️ "+(e.message||e))}
+}
+async function doCreate(){
+  var ps=$("inPseudo").value.trim();
+  if(ps.length<2){toast("Pseudo trop court");return}
+  var name=prompt("Nom de ta ligue (ex : Les Cadors du PMU) :","");
+  if(!name||name.trim().length<2)return;
+  S.pseudo=ps;save();
+  try{await ensureAuth();await createLeague(name.trim());save();
+    toast("🏆 Ligue créée ! Code : "+S.league.code);await boot();go("ligue");
+  }catch(e){toast("⚠️ "+(e.message||e))}
+}
+
+function vPronos(){
+  var h='<div class="sec">📝 Mes pronos</div>';
+  if(S.dirty.length)h+='<div class="card center" style="border-color:var(--yellow)">'
+    +'<b>'+S.dirty.length+' prono'+(S.dirty.length>1?"s":"")+' non publié'+(S.dirty.length>1?"s":"")+'</b>'
+    +'<div style="height:8px"></div><button class="btn" onclick="publishPronos()">📤 Publier maintenant</button></div>';
+  var lastDay="";
+  S.matches.forEach(function(m){
+    if(!m.team1||!m.team2)return; // TBD
+    var day=fmtDay(m.kickoff);
+    if(day!==lastDay){h+='<div class="day-h">📅 '+day+'</div>';lastDay=day}
+    var p=S.pronos[m.id]||{},locked=isLocked(m),played=(m.score1!==null&&m.score1!==undefined);
+    h+='<div class="match'+(locked?" locked":"")+'">';
+    h+='<div class="m-head"><span>'+fmtH(m.kickoff)+' · '+(m.stadium||"")+'</span>';
+    if(played)h+='<span style="color:var(--green);font-weight:900">Réel '+m.score1+'-'+m.score2+'</span>';
+    else if(locked)h+='<span class="lock">🔒 verrouillé</span>';
+    else h+='<span class="tag">'+m.stage+'</span>';
+    h+='</div><div class="m-row">';
+    h+='<div class="m-team">'+flag(m.team1)+' '+m.team1+'</div>';
+    if(locked){
+      h+='<div style="font-size:20px;font-weight:900;color:var(--yellow)">'+(p.s1!==undefined?p.s1+" - "+p.s2:"—")+'</div>';
+    }else{
+      h+='<div class="step"><button onclick="setScore('+m.id+',\'s1\',-1)">−</button><span class="val">'+(p.s1!==undefined?p.s1:"–")+'</span><button onclick="setScore('+m.id+',\'s1\',1)">+</button></div>';
+      h+='<span style="color:var(--t2)">·</span>';
+      h+='<div class="step"><button onclick="setScore('+m.id+',\'s2\',-1)">−</button><span class="val">'+(p.s2!==undefined?p.s2:"–")+'</span><button onclick="setScore('+m.id+',\'s2\',1)">+</button></div>';
+    }
+    h+='<div class="m-team right">'+m.team2+' '+flag(m.team2)+'</div>';
+    if(!locked)h+='<button class="boost-btn'+((p.boost||1)>1?" on":"")+'" onclick="cycleBoost('+m.id+')">⚡'+((p.boost||1)>1?"×"+p.boost:"")+'</button>';
+    else if((p.boost||1)>1)h+='<span class="boost-btn on">⚡×'+p.boost+'</span>';
+    h+='</div></div>';
+  });
+  return h;
+}
+
+function vClassement(){
+  var h='<div class="sec">🏆 Classement — '+(S.league?S.league.name:"")+'</div>';
+  if(!S.standings.length)h+='<div class="card hint">Pas encore de points — le classement se remplit quand les résultats tombent.</div>';
+  S.standings.forEach(function(r,i){
+    var medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1);
+    h+='<div class="rank'+(r.me?" me":"")+'"><span class="pos">'+medal+'</span>'
+      +'<span class="who">'+r.pseudo+(r.me?" (toi)":"")+'</span>'
+      +'<span><span class="pts">'+r.points+' pts</span> <span class="sub">'+r.exacts+' exacts · '+r.played+' matchs</span></span></div>';
+  });
+  h+='<div style="height:10px"></div><div class="card center"><button class="btn alt" onclick="refresh()">🔄 Actualiser</button></div>';
+  return h;
+}
+
+function vLigue(){
+  if(!S.league)return vOnboard();
+  return '<div class="sec">👥 Ma ligue</div>'
+    +'<div class="card center"><h2>'+S.league.name+'</h2>'
+    +'<div class="league-code"><b>'+S.league.code+'</b></div>'
+    +'<div class="hint">File ce code à tes potos (ou le lien) — ils te rejoignent en 10 secondes.</div>'
+    +'<div style="height:12px"></div><button class="btn" onclick="copyCode()">📋 Copier le lien d\'invitation</button></div>'
+    +'<div class="card"><div style="font-weight:900;margin-bottom:6px">Règles du jeu</div>'
+    +'<div class="hint" style="text-align:left">· Score exact : <b style="color:var(--green)">3 pts</b> · Bon résultat (1/N/2) : <b style="color:var(--green)">1 pt</b><br>'
+    +'· Boost ⚡ ×2/×3/×5 : multiplie tes points sur le match<br>'
+    +'· Pronos modifiables jusqu\'au coup d\'envoi, ensuite 🔒 verrouillés par le serveur<br>'
+    +'· Les pronos des autres ne sont visibles qu\'après le début du match</div></div>'
+    +'<div class="card center"><button class="btn alt" onclick="logout()">🚪 Quitter sur cet appareil</button></div>'
+    +'<div class="hint">Pseudo : '+S.pseudo+(DEMO?' · MODE DÉMO':'')+'</div>';
+}
+
+/* ─── Router ───────────────────────────────────────────────── */
+function go(v){S.view=v;render();scrollTo(0,0)}
+function render(){
+  $("modePill").innerHTML=DEMO?'<span class="demo-pill">MODE DÉMO</span>':"";
+  var nav=$("nav");
+  if(S.view==="onboard"||!S.league){nav.style.display="none";$("app").innerHTML=vOnboard();return}
+  nav.style.display="flex";
+  ["pronos","classement","ligue"].forEach(function(v){
+    $("nav-"+v).classList.toggle("on",S.view===v)});
+  $("app").innerHTML=S.view==="classement"?vClassement():S.view==="ligue"?vLigue():vPronos();
+}
+async function refresh(){await loadMatches();await loadStandings();render();toast("🔄 À jour")}
+async function boot(){
+  await loadMatches();
+  if(S.league){try{await ensureAuth()}catch(e){} await loadStandings()}
+}
+(async function init(){
+  await boot();
+  S.view=S.league?"pronos":"onboard";
+  render();
+})();
+</script>
+</body>
+</html>
