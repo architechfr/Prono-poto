@@ -172,7 +172,7 @@ end $$;
 create or replace function admin_set_score(p_admin_code text, p_match_id int, p_s1 int, p_s2 int)
 returns void language plpgsql security definer set search_path = public as $$
 begin
-  if p_admin_code <> 'CHANGE_MOI_VITE' then raise exception 'code admin invalide'; end if;
+  if p_admin_code <> 'Prono2026!A' then raise exception 'code admin invalide'; end if;
   update matches set score1 = p_s1, score2 = p_s2, scored_at = now() where id = p_match_id;
 end $$;
 

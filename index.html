@@ -324,8 +324,8 @@ h1,h2{font-weight:900;letter-spacing:.5px}
    Avec clés : Supabase réel (exécuter supabase/schema.sql +
    seed_matches.sql, activer Anonymous sign-ins — voir README).
    ════════════════════════════════════════════════════════════ */
-var SUPA_URL = "";
-var SUPA_ANON_KEY = "";
+var SUPA_URL = "https://ojbmfagxjcqpptruwnzl.supabase.co";
+var SUPA_ANON_KEY = "sb_publishable_sy0HEo0wpTuEenFd3X5Swg__2A31sFe";
 
 var DEMO = !(SUPA_URL && SUPA_ANON_KEY);
 var sb = DEMO ? null : supabase.createClient(SUPA_URL, SUPA_ANON_KEY);
@@ -749,15 +749,18 @@ async function apiJoinLeague(code){
 async function publishPronos(){
   var ids=S.dirty.slice();
   if(!ids.length){toast("✅ Tout est déjà publié");return}
-  if(DEMO){S.dirty=[];save();fireConfetti();toast("📤 "+ids.length+" prono"+(ids.length>1?"s":"")+" publié"+(ids.length>1?"s":"")+" (démo)");render();return}
+  if(DEMO){S.dirty=[];save();fireConfetti();render();showPublished(ids.length);return}
   var rows=ids.map(function(id){var p=S.pronos[id];
     return{user_id:S.userId,match_id:parseInt(id,10),score1:p.s1,score2:p.s2,boost:p.boost||1}});
   rows.sort(function(a,b){return a.boost-b.boost}); // libérer un capitaine AVANT d'en poser un (trigger quota)
   var r=await sb.from("predictions").upsert(rows);
   if(r.error){toast("⚠️ Refusé (match commencé ?) : "+r.error.message);return}
-  S.dirty=[];save();fireConfetti();
-  toast("📤 "+rows.length+" prono"+(rows.length>1?"s":"")+" publié"+(rows.length>1?"s":"")+" !");
-  render();
+  S.dirty=[];save();fireConfetti();render();
+  showPublished(rows.length);
+}
+/* Écran de confirmation post-publication : guide vers la suite */
+function showPublished(n){
+  S.modal="published";S._pubCount=n;renderModal();
 }
 
 /* ─── Actions ──────────────────────────────────────────────── */
@@ -1087,6 +1090,14 @@ function renderModal(){
      +'<input class="input code" id="inCode" maxlength="6" placeholder="CODE" value="'+esc(urlCode)+'">'
      +'<button class="btn" onclick="doJoin()">🚀 C\'est parti !</button>'
      +'<div class="mini-hint" style="margin-top:4px">Tu n\'as pas de code ? Demande-le à l\'organisateur de ta ligue.</div></div>';
+  }else if(S.modal==="published"){
+    var n=S._pubCount||0;
+    inner='<div class="form success"><div class="cs-emoji">📤</div>'
+     +'<div class="cs-title">'+n+' prono'+(n>1?"s":"")+' publié'+(n>1?"s":"")+' !</div>'
+     +'<div class="mini-hint" style="margin:0 0 10px">Ils comptent pour le classement et seront 🔒 verrouillés à chaque coup d\'envoi. Tu peux les modifier jusque-là.</div>'
+     +'<button class="btn" onclick="closeModal();go(\'classement\')">🏆 Voir le classement</button>'
+     +'<button class="btn alt" onclick="closeModal();go(\'ligue\')">👥 Inviter des potos</button>'
+     +'<button class="btn alt" onclick="closeModal()">✍️ Continuer mes pronos</button></div>';
   }else if(S.modal==="created"){
     inner='<div class="form success"><div class="cs-emoji">🎉</div>'
      +'<div class="cs-title">« '+esc(S.league.name)+' » est en ligne !</div>'
