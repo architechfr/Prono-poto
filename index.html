@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Prono Poto ⚽ Pronos entre potos</title>
 <meta name="theme-color" content="#050b1a">
+<!-- PWA / plein écran : lancement sans la barre Safari une fois ajouté à l'écran d'accueil -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Prono Poto">
+<link rel="apple-touch-icon" href="https://architechfr.github.io/FOOT-FLASH/app/src/main/assets/apple-touch-icon.png">
+<link rel="manifest" href='data:application/manifest+json,{"name":"Prono Poto","short_name":"Prono Poto","display":"standalone","orientation":"portrait","background_color":"%23050b1a","theme_color":"%23050b1a","start_url":"./","icons":[{"src":"https://architechfr.github.io/FOOT-FLASH/app/src/main/assets/icon-192.png","sizes":"192x192","type":"image/png"},{"src":"https://architechfr.github.io/FOOT-FLASH/app/src/main/assets/icon-512.png","sizes":"512x512","type":"image/png"}]}'>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230c1730'/%3E%3Ccircle cx='32' cy='32' r='22' fill='%23e8c45c'/%3E%3Cpolygon points='32,24 39.6,29.5 36.7,38.5 27.3,38.5 24.4,29.5' fill='%230c1730'/%3E%3Cg stroke='%230c1730' stroke-width='2.5'%3E%3Cline x1='32' y1='24' x2='32' y2='11'/%3E%3Cline x1='39.6' y1='29.5' x2='51' y2='24'/%3E%3Cline x1='36.7' y1='38.5' x2='44' y2='50'/%3E%3Cline x1='27.3' y1='38.5' x2='20' y2='50'/%3E%3Cline x1='24.4' y1='29.5' x2='13' y2='24'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&display=swap" rel="stylesheet">
@@ -123,13 +130,18 @@ h1,h2{font-weight:900;letter-spacing:.5px}
 .chip.on{background:var(--g);color:var(--ink);border-color:var(--g)}
 .bar{height:6px;border-radius:99px;background:rgba(255,255,255,.08);margin-top:7px;overflow:hidden}
 .bar-fill{height:100%;border-radius:99px;background:var(--g);transition:width .5s ease}
-.step{display:flex;align-items:center;gap:5px}
-.step button{width:36px;height:42px;border-radius:12px;background:rgba(29,55,96,.85);color:var(--g);
-  font-size:21px;font-weight:900;cursor:pointer;line-height:1;border:1px solid var(--s3);transition:.1s;font-family:inherit;
+/* case de score tappable : appui = +1 but · appui long = −1 but */
+.sbox{position:relative;width:54px;height:52px;border-radius:14px;background:rgba(29,55,96,.85);
+  color:var(--am);font-family:var(--fhead);font-size:26px;font-weight:900;line-height:1;cursor:pointer;
+  border:1px solid var(--s3);transition:transform .1s, background .1s, color .1s;
+  display:flex;align-items:center;justify-content:center;
+  text-shadow:0 0 16px rgba(255,179,0,.35);
+  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.07)}
-.step button:active{transform:scale(.9);background:var(--g);color:var(--ink)}
-.step .val{min-width:28px;text-align:center;font-family:var(--fhead);font-size:24px;font-weight:800;color:var(--am);
-  text-shadow:0 0 16px rgba(255,179,0,.35)}
+.sbox:active{transform:scale(.92);background:var(--g);color:var(--ink);text-shadow:none}
+.sbox.lng{background:var(--rd);color:#fff;transform:scale(.92);text-shadow:none}
+.sbox .empty{color:var(--t2)}
+.sb-dash{color:var(--t2);font-weight:900;font-size:18px}
 /* scores rapides en un tap */
 .m-quick{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
 .m-quick button{flex:1;min-width:52px;padding:8px 0;border-radius:10px;border:1px dashed var(--s3);
@@ -169,6 +181,27 @@ h1,h2{font-weight:900;letter-spacing:.5px}
   white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .toastbox.show{opacity:1;transform:translateX(-50%)}
 .confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:70}
+
+/* ── bannière + guide d'installation ── */
+.install-banner{display:flex;align-items:center;gap:10px;margin:10px 16px 0;padding:11px 13px;border-radius:14px;cursor:pointer;
+  background:linear-gradient(120deg, rgba(255,179,0,.16), rgba(13,24,48,.78));border:1px solid rgba(255,179,0,.4);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.install-banner:active{transform:scale(.99)}
+.ib-ic{font-size:22px;flex:0 0 auto}
+.ib-txt{flex:1;font-size:12.5px;color:var(--t2);line-height:1.35}
+.ib-txt b{color:var(--tx)}
+.ib-x{flex:0 0 auto;background:none;border:none;color:var(--t2);font-size:15px;font-weight:900;cursor:pointer;padding:4px 6px;line-height:1}
+.inst-tabs{display:flex;gap:8px;margin-bottom:12px}
+.inst-tab{flex:1;padding:10px;border-radius:12px;border:1.5px solid var(--s3);background:var(--s2);color:var(--t2);
+  font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;transition:.15s}
+.inst-tab.on{background:var(--g);color:var(--ink);border-color:var(--g)}
+.inst-steps{display:flex;flex-direction:column;gap:11px}
+.inst-step{display:flex;align-items:flex-start;gap:11px;font-size:13.5px;color:var(--t2);line-height:1.45}
+.inst-step b{color:var(--tx)}
+.inst-n{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--g);color:var(--ink);
+  font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center}
+.inst-ico{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 4px;
+  border-radius:6px;background:var(--s2);border:1px solid var(--s3);color:var(--g);font-size:14px;vertical-align:-4px}
 
 /* ── onboarding ── */
 .onboard{padding:6px 0 18px}
@@ -901,6 +934,34 @@ function setScore(id,side,delta){
   p[side]=Math.max(0,Math.min(20,(p[side]||0)+delta));
   S.pronos[id]=p;markDirty(id);save();render();
 }
+/* ── Case de score : appui = +1 but · appui long (≈420ms) = −1 but.
+   Un seul geste par case → fini les deux boutons −/+ trop gros. ── */
+var _sbTimer=null,_sbLong=false;
+function scoreDown(ev,id,side){
+  ev.stopPropagation();
+  _sbLong=false;
+  var el=ev.currentTarget;
+  _sbTimer=setTimeout(function(){
+    _sbLong=true;
+    if(el)el.classList.add("lng");
+    if(navigator.vibrate)navigator.vibrate(18);
+    setScore(id,side,-1); // re-render : la case courante disparaît, c'est voulu
+  },420);
+}
+function scoreUp(ev,id,side){
+  ev.stopPropagation();
+  clearTimeout(_sbTimer);
+  if(_sbLong){_sbLong=false;return} // l'appui long a déjà retiré un but
+  setScore(id,side,1);
+  if(!localStorage.getItem("ppff_hint_longpress")){
+    localStorage.setItem("ppff_hint_longpress","1");
+    toast("💡 Astuce : appui long sur le score = enlever un but");
+  }
+}
+function scoreCancel(ev){
+  if(ev)ev.stopPropagation();
+  clearTimeout(_sbTimer);_sbLong=false;
+}
 // Prono complet en un tap (chips de scores rapides)
 function setQuick(id,a,b){
   var m=S.matches.find(function(x){return x.id===id});
@@ -979,13 +1040,36 @@ function lonelyExactUid(preds,m){
   return ex.length===1?ex[0].user_id:null;
 }
 function inviteLink(){return location.origin+location.pathname+"?ligue="+(S.league?S.league.code:"")}
+/* Message d'invitation taillé pour WhatsApp : le lien embarque le code,
+   donc un seul tap = app ouverte + ligue rejointe. */
+function inviteMessage(){
+  var nm=S.league?S.league.name:"ma ligue", code=S.league?S.league.code:"";
+  return "🏆 Rejoins ma ligue « "+nm+" » sur Prono Poto !\n"
+    +"On se défie aux pronos de la Coupe du Monde 2026 ⚽\n\n"
+    +"👉 Tape le lien : ça t'ajoute direct dans la ligue (code "+code+").\n"
+    +"📲 Ajoute-la à ton écran d'accueil pour jouer en plein écran, comme une vraie appli.\n\n"
+    +inviteLink();
+}
 function copyLink(){
-  if(navigator.clipboard)navigator.clipboard.writeText(inviteLink());
-  toast("📋 Lien d'invitation copié !");
+  var msg=inviteMessage();
+  if(navigator.clipboard)navigator.clipboard.writeText(msg);
+  toast("📋 Invitation copiée — colle-la dans WhatsApp !");
 }
 function shareLink(){
-  if(navigator.share)navigator.share({title:"Prono Poto",text:"Rejoins ma ligue « "+S.league.name+" » sur Prono Poto ! Code : "+S.league.code,url:inviteLink()}).catch(function(){});
+  if(navigator.share)navigator.share({title:"Prono Poto",text:inviteMessage()}).catch(function(){});
   else copyLink();
+}
+/* ── Installation plein écran (PWA) ── */
+function isIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1)}
+function isStandalone(){return window.navigator.standalone===true||(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)}
+function dismissInstall(){try{localStorage.setItem("ppff_install_dismiss","1")}catch(e){}; var b=$("installBanner"); if(b)b.remove();}
+function installBannerHtml(){
+  if(isStandalone())return "";
+  try{if(localStorage.getItem("ppff_install_dismiss"))return ""}catch(e){}
+  return '<div id="installBanner" class="install-banner" onclick="openModal(\'install\')">'
+    +'<span class="ib-ic">📲</span>'
+    +'<span class="ib-txt"><b>Installe Prono Poto</b> en plein écran sur ton téléphone</span>'
+    +'<button class="ib-x" onclick="event.stopPropagation();dismissInstall()" aria-label="Fermer">✕</button></div>';
 }
 function leaveLeague(){
   if(!confirm("Quitter « "+(S.league?S.league.name:"")+" » sur cet appareil ? (tes pronos publiés restent au classement)"))return;
@@ -1033,9 +1117,17 @@ function vOnboard(){
    +'<button class="btn" onclick="openModal(\'create\')">➕ Créer ma ligue</button>'
    +'<button class="btn alt" onclick="openModal(\'join\')">🔑 Rejoindre avec un code</button>'
    +'</div>'
-   +'<div class="mini-hint">Gratuit · entre potos · aucune appli à installer</div>'
+   +'<div class="mini-hint">Gratuit · entre potos · rien à télécharger · <span style="color:var(--g);text-decoration:underline;cursor:pointer" onclick="openModal(\'install\')">l\'ajouter en plein écran 📲</span></div>'
    +'<div class="foot-credit">⚽ Par l\'équipe <a href="https://architechfr.github.io/FOOT-FLASH/" target="_blank" rel="noopener"><b>Foot Flash 2026</b></a> · Made with ⚽ par Florian</div>'
    +'</div>';
+}
+function scoreBox(id,side,val){
+  return '<button class="sbox" oncontextmenu="return false"'
+    +' title="Appui = +1 but · appui long = −1 but"'
+    +' onpointerdown="scoreDown(event,'+id+',\''+side+'\')"'
+    +' onpointerup="scoreUp(event,'+id+',\''+side+'\')"'
+    +' onpointerleave="scoreCancel(event)" onpointercancel="scoreCancel(event)">'
+    +(val==null?'<span class="empty">–</span>':val)+'</button>';
 }
 function matchRowHtml(m){
   var st=matchState(m),p=S.pronos[m.id];
@@ -1058,8 +1150,9 @@ function matchRowHtml(m){
     h+='<div class="m-score-locked">'+(p?('<b>'+p.s1+'</b><span>-</span><b>'+p.s2+'</b>'):'<span class="m-noprono">– pas de prono –</span>')+'</div>';
   }else{
     h+='<div class="m-steppers" onclick="event.stopPropagation()">';
-    h+='<div class="step"><button onclick="setScore('+m.id+',\'s1\',-1)">−</button><span class="val">'+(p?p.s1:"–")+'</span><button onclick="setScore('+m.id+',\'s1\',1)">+</button></div>';
-    h+='<div class="step"><button onclick="setScore('+m.id+',\'s2\',-1)">−</button><span class="val">'+(p?p.s2:"–")+'</span><button onclick="setScore('+m.id+',\'s2\',1)">+</button></div>';
+    h+=scoreBox(m.id,'s1',p?p.s1:null);
+    h+='<span class="sb-dash">-</span>';
+    h+=scoreBox(m.id,'s2',p?p.s2:null);
     h+='</div>';
   }
   h+='<div class="m-team right">'+m.team2+'<span class="fl">'+flag(m.team2)+'</span></div></div>';
@@ -1256,7 +1349,7 @@ function vLigue(){
    +'<div class="iv-link">'+esc(link)+'</div>'
    +'<div class="iv-actions"><button class="btn" onclick="copyLink()">📋 Copier le lien</button>'
    +'<button class="btn alt" onclick="shareLink()">📤 Partager</button></div>'
-   +'<div class="iv-hint">File ce code (ou flashe le QR) à tes potos — ils te rejoignent en 10 secondes.</div></div>';
+   +'<div class="iv-hint">File ce code (ou flashe le QR) à tes potos — ils te rejoignent en 10 secondes.<br><span style="color:var(--g);text-decoration:underline;cursor:pointer" onclick="openModal(\'install\')">📲 Installer Prono Poto en plein écran</span></div></div>';
   h+='<div class="sec"><span>Les potos ('+(S.members||S.standings.length)+')</span></div>';
   h+='<div class="members">';
   S.standings.forEach(function(r){
@@ -1365,6 +1458,27 @@ function renderModal(){
      +'<button class="btn" onclick="closeModal();go(\'classement\')">🏆 Voir le classement</button>'
      +'<button class="btn alt" onclick="closeModal();go(\'ligue\')">👥 Inviter des potos</button>'
      +'<button class="btn alt" onclick="closeModal()">✍️ Continuer mes pronos</button></div>';
+  }else if(S.modal==="install"){
+    var ios=isIOS();
+    inner='<div class="sheet-title">📲 Installer Prono Poto</div>'
+     +'<div class="mini-hint" style="margin:-6px 0 12px">Ajoute l\'appli à ton écran d\'accueil : elle s\'ouvre en <b>plein écran</b>, sans la barre du navigateur — comme une vraie appli, et hors-ligne le calendrier reste dispo.</div>'
+     +'<div class="inst-tabs">'
+       +'<button class="inst-tab'+(ios?' on':'')+'" onclick="document.getElementById(\'inst-ios\').style.display=\'block\';document.getElementById(\'inst-and\').style.display=\'none\';this.classList.add(\'on\');this.nextElementSibling.classList.remove(\'on\')">🍎 iPhone / iPad</button>'
+       +'<button class="inst-tab'+(ios?'':' on')+'" onclick="document.getElementById(\'inst-and\').style.display=\'block\';document.getElementById(\'inst-ios\').style.display=\'none\';this.classList.add(\'on\');this.previousElementSibling.classList.remove(\'on\')">🤖 Android</button>'
+     +'</div>'
+     +'<div id="inst-ios" class="inst-steps" style="display:'+(ios?'block':'none')+'">'
+       +'<div class="inst-step"><span class="inst-n">1</span><div>Ouvre cette page dans <b>Safari</b> (pas Chrome ni l\'app WhatsApp). Si tu es dans WhatsApp, tape ⋯ puis « Ouvrir dans Safari ».</div></div>'
+       +'<div class="inst-step"><span class="inst-n">2</span><div>Touche le bouton <b>Partager</b> <span class="inst-ico">⎙</span> en bas de l\'écran (le carré avec une flèche vers le haut).</div></div>'
+       +'<div class="inst-step"><span class="inst-n">3</span><div>Fais défiler et choisis <b>« Sur l\'écran d\'accueil »</b> <span class="inst-ico">⊞</span>, puis <b>Ajouter</b>.</div></div>'
+       +'<div class="inst-step"><span class="inst-n">4</span><div>Lance Prono Poto depuis la <b>nouvelle icône</b> ⚽ — plein écran garanti !</div></div>'
+     +'</div>'
+     +'<div id="inst-and" class="inst-steps" style="display:'+(ios?'none':'block')+'">'
+       +'<div class="inst-step"><span class="inst-n">1</span><div>Ouvre cette page dans <b>Chrome</b>.</div></div>'
+       +'<div class="inst-step"><span class="inst-n">2</span><div>Touche le menu <b>⋮</b> en haut à droite.</div></div>'
+       +'<div class="inst-step"><span class="inst-n">3</span><div>Choisis <b>« Installer l\'application »</b> ou <b>« Ajouter à l\'écran d\'accueil »</b>.</div></div>'
+       +'<div class="inst-step"><span class="inst-n">4</span><div>Confirme — l\'icône ⚽ apparaît, et l\'appli s\'ouvre en plein écran.</div></div>'
+     +'</div>'
+     +'<button class="btn alt" style="margin-top:12px" onclick="closeModal()">J\'ai compris 👍</button>';
   }else if(S.modal==="created"){
     inner='<div class="form success"><div class="cs-emoji">🎉</div>'
      +'<div class="cs-title">« '+esc(S.league.name)+' » est en ligne !</div>'
