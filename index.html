@@ -865,7 +865,14 @@ async function publishPronos(){
     return{user_id:S.userId,match_id:parseInt(id,10),score1:p.s1,score2:p.s2,boost:p.boost||1}});
   rows.sort(function(a,b){return a.boost-b.boost}); // libérer un capitaine AVANT d'en poser un (trigger quota)
   var r=await sb.from("predictions").upsert(rows);
-  if(r.error){toast("⚠️ Refusé (match commencé ?) : "+r.error.message);return}
+  if(r.error){
+    var msg=r.error.message||"";
+    if(/recursion|policy/i.test(msg)) toast("⚠️ Base à configurer : lance fix_rls_recursion.sql dans Supabase (RLS)");
+    else if(/capitaine|capit|boost|quota/i.test(msg)) toast("⚠️ "+msg+" — réduis ce boost puis republie");
+    else if(/kickoff|commenc|now\(\)/i.test(msg)) toast("⚠️ Trop tard : ce match a déjà commencé");
+    else toast("⚠️ Refusé : "+msg);
+    return;
+  }
   S.dirty=[];save();fireConfetti();render();
   showPublished(rows.length);
 }
