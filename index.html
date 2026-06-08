@@ -755,7 +755,7 @@ function countdown(iso){var ms=H(iso)-NOW();if(ms<=0)return "maintenant";
   var d=Math.floor(ms/864e5),h=Math.floor(ms%864e5/36e5),mn=Math.floor(ms%36e5/6e4);
   if(d>0)return "J-"+d+" "+h+"h";if(h>0)return "dans "+h+"h"+String(mn).padStart(2,"0");return "dans "+mn+" min"}
 /* Barème "gros points" : bon résultat = 100 · score exact = 300 (×3)
-   × Capitaine ⚡2 / Super ⭐3 → jusqu'à 900 pts sur un match.
+   × Boost ⚡2 / Super Boost ⭐3 → jusqu'à 900 pts sur un match.
    (v2 prévue : buteur, score mi-temps... = bonus d'expérience) */
 function computePoints(p,m){
   if(m.score1==null||m.score2==null)return null;
@@ -868,7 +868,8 @@ async function publishPronos(){
   if(r.error){
     var msg=r.error.message||"";
     if(/recursion|policy/i.test(msg)) toast("⚠️ Base à configurer : lance fix_rls_recursion.sql dans Supabase (RLS)");
-    else if(/capitaine|capit|boost|quota/i.test(msg)) toast("⚠️ "+msg+" — réduis ce boost puis republie");
+    else if(/super capitaine|⭐/i.test(msg)) toast("⭐ Un seul Super Boost ×3 par phase — retire-en un puis republie");
+    else if(/capitaine|boost|quota/i.test(msg)) toast("⚡ Un seul Boost ×2 par journée — retire-en un puis republie");
     else if(/kickoff|commenc|now\(\)/i.test(msg)) toast("⚠️ Trop tard : ce match a déjà commencé");
     else toast("⚠️ Refusé : "+msg);
     return;
@@ -906,8 +907,8 @@ function setSuggested(id){
   toast("🎲 Prono suggéré : "+sg.s1+"–"+sg.s2);
 }
 /* ── CAPITAINE / SUPER CAPITAINE — mécanique à rareté (façon Kicktipp/fantasy)
-   ⚡ Capitaine ×2 : UN seul par journée (J1/J2/J3 des groupes, puis par tour KO)
-   ⭐ Super capitaine ×3 : UN seul par phase (groupes / phase finale)
+   ⚡ Boost ×2 : UN seul par journée (J1/J2/J3 des groupes, puis par tour KO)
+   ⭐ Super Boost ×3 : UN seul par phase (groupes / phase finale)
    → fini le boost illimité qui ne valait rien. ── */
 function journeyKey(m){
   var b=stageBucket(m.stage);
@@ -940,16 +941,16 @@ function cycleBoost(id){
     if(holder){
       if(matchState(holder)!=="open"){
         // le capitaine est déjà consommé sur un match verrouillé → impossible
-        toast((next===2?"⚡ Capitaine déjà joué":"⭐ Super capitaine déjà joué")+" sur "+holder.team1+"-"+holder.team2);
+        toast((next===2?"⚡ Boost ×2 déjà placé":"⭐ Super Boost ×3 déjà placé")+" sur "+holder.team1+"-"+holder.team2);
         p.boost=1;markDirty(id);save();render();return;
       }
       S.pronos[holder.id].boost=1;markDirty(holder.id);
     }
   }
   p.boost=next;markDirty(id);save();render();
-  if(next===2)toast("⚡ Capitaine ×2 — ton match fort de la "+journeyLabel(journeyKey(m)));
-  else if(next===3)toast("⭐ Super capitaine ×3 — unique pour toute la "+superPhase(m)+" !");
-  else toast("Capitaine retiré");
+  if(next===2)toast("⚡ Boost ×2 — ton match fort de la "+journeyLabel(journeyKey(m)));
+  else if(next===3)toast("⭐ Super Boost ×3 — unique pour toute la "+superPhase(m)+" !");
+  else toast("Boost retiré");
 }
 /* Bonus "Seul au monde" : +200 pts si tu es le SEUL de la ligue avec le score exact */
 function lonelyExactUid(preds,m){
@@ -982,6 +983,20 @@ async function openDetail(id){
   S.detail=id;render();
   await loadFriendPreds(id);render();
 }
+// Remet tous les Boost ⚡/⭐ à ×1 (utile après un import Foot Flash)
+function clearAllBoosts(){
+  var n=0;
+  Object.keys(S.pronos||{}).forEach(function(k){
+    var p=S.pronos[k];
+    if(p&&(p.boost||1)>1){p.boost=1;if(S.dirty.indexOf(k)<0)S.dirty.push(k);n++}
+  });
+  if(!n){toast("Aucun boost à retirer");return}
+  save();render();
+  toast("✨ "+n+" boost(s) retiré(s) — replace-les comme tu veux puis publie");
+}
+function countBoosts(){
+  return Object.keys(S.pronos||{}).filter(function(k){return (S.pronos[k].boost||1)>1}).length;
+}
 
 /* ─── Vues ─────────────────────────────────────────────────── */
 function vOnboard(){
@@ -992,7 +1007,7 @@ function vOnboard(){
    +'<div class="valueprops">'
    +'<div class="vp"><span>📝</span><div><b>Pronostique</b> les 104 matchs</div></div>'
    +'<div class="vp"><span>🔒</span><div><b>Verrouillé</b> au coup d\'envoi — zéro triche</div></div>'
-   +'<div class="vp"><span>⚡</span><div>Bon résultat <b>100 pts</b>, score exact <b>300</b> — jusqu\'à <b>900</b> avec le Super capitaine ⭐</div></div>'
+   +'<div class="vp"><span>⚡</span><div>Bon résultat <b>100 pts</b>, score exact <b>300</b> — jusqu\'à <b>900</b> avec le Super Boost ⭐</div></div>'
    +'</div>'
    +'<div class="onboard-cta">'
    +'<button class="btn" onclick="openModal(\'create\')">➕ Créer ma ligue</button>'
@@ -1041,7 +1056,7 @@ function matchRowHtml(m){
   if(locked&&p&&(p.boost||1)>1)h+='<span class="m-boost-lock">'+(p.boost===3?"⭐":"⚡")+'×'+p.boost+'</span>';
   if(!locked){
     var bb=(p&&p.boost)||1;
-    h+='<span onclick="event.stopPropagation()"><button class="boost'+(bb>1?" on":"")+'" title="⚡ Capitaine ×2 (1 par journée) · ⭐ Super ×3 (1 par phase)" onclick="cycleBoost('+m.id+')">'
+    h+='<span onclick="event.stopPropagation()"><button class="boost'+(bb>1?" on":"")+'" title="⚡ Boost ×2 (1 par journée) · ⭐ Super Boost ×3 (1 par phase)" onclick="cycleBoost('+m.id+')">'
       +(bb===3?'⭐<b>×3</b>':bb===2?'⚡<b>×2</b>':'⚡')+'</button></span>';
   }
   h+='<span class="m-detail-link">'+(locked?"Voir les pronos des potos ›":"Détails du match ›")+'</span>';
@@ -1066,6 +1081,12 @@ function vPronos(){
    +'<div class="ls-rank-pts">'+(me?me.points:0)+' pts</div></div></div>';
   h+='<div class="sec"><span>📝 Mes pronos</span>'
    +'<span class="sec-count" style="cursor:pointer;color:var(--g)" onclick="importFromFootFlash()">📥 Importer de Foot Flash</span></div>';
+  var nB=countBoosts();
+  if(nB>0){
+    h+='<div style="margin:0 16px 8px;padding:10px 12px;background:rgba(255,179,0,.1);border:1px solid rgba(255,179,0,.4);border-radius:12px;font-size:12px;color:var(--t2);line-height:1.5">'
+      +'⚡ Tu as <b style="color:var(--am)">'+nB+'</b> boost(s) placé(s). Rappel : <b>1 seul ⚡×2 par journée</b> et <b>1 seul ⭐×3 par phase</b>. '
+      +'<span style="cursor:pointer;color:var(--g);font-weight:800;text-decoration:underline" onclick="clearAllBoosts()">Tout remettre à zéro</span></div>';
+  }
   h+='<div class="chips">'+STAGES.map(function(s){
     return '<button class="chip'+(s===S.phase?" on":"")+'" onclick="S.phase=\''+s+'\';render()">'+s+'</button>'}).join("")+'</div>';
   var visible=S.matches.filter(function(m){return S.phase==="Tout"||stageBucket(m.stage)===S.phase});
@@ -1153,7 +1174,7 @@ function vDetail(){
     });
     h+='</div>';
   }
-  h+='<div class="legend">Barème : bon résultat <b>100</b> · score exact <b>300</b> · ⚡ Capitaine ×2 · ⭐ Super ×3 · 🎯 seul au monde +200</div>';
+  h+='<div class="legend">Barème : bon résultat <b>100</b> · score exact <b>300</b> · ⚡ Boost ×2 · ⭐ Super Boost ×3 · 🎯 seul au monde +200</div>';
   return h;
 }
 function vClassement(){
@@ -1223,8 +1244,8 @@ function vLigue(){
   h+='<div class="mb add" onclick="shareLink()"><div class="mb-add">＋</div><span>Inviter</span></div></div>';
   h+='<div class="card rules"><div class="rules-h">⚖️ Règles du jeu</div><ul>'
    +'<li>Bon résultat (1/N/2) : <b class="g">100 pts</b> · score exact : <b class="g">300 pts</b></li>'
-   +'<li>⚡ <b>Capitaine ×2</b> : un seul match par journée — choisis bien !</li>'
-   +'<li>⭐ <b>Super capitaine ×3</b> : un seul pour les groupes, un seul pour la phase finale</li>'
+   +'<li>⚡ <b>Boost ×2</b> : un seul match par journée — choisis bien !</li>'
+   +'<li>⭐ <b>Super Boost ×3</b> : un seul pour les groupes, un seul pour la phase finale</li>'
    +'<li>🎯 <b>Seul au monde +200</b> : bonus si tu es le seul de la ligue avec le score exact</li>'
    +'<li>Pronos modifiables jusqu\'au coup d\'envoi, puis 🔒 verrouillés par le serveur</li>'
    +'<li>Les pronos des potos n\'apparaissent qu\'après le coup d\'envoi</li></ul></div>';
@@ -1396,6 +1417,7 @@ function ffImportApply(data){
     var p=S.pronos[id]||{boost:1};
     p.s1=Math.max(0,Math.min(20,+v.a||0));
     p.s2=Math.max(0,Math.min(20,+v.b||0));
+    p.boost=1; // les boosts Foot Flash ne s'appliquent pas ici (règles différentes) — à replacer dans Prono Poto
     S.pronos[id]=p;markDirty(id);n++;
   });
   if(n)save();
