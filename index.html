@@ -71,6 +71,17 @@ h1,h2{font-weight:900;letter-spacing:.5px}
 .lg-code{font-size:10px;color:var(--t2);font-weight:700;letter-spacing:1px}
 .lg-tag{font-size:9px;font-weight:900;background:var(--g);color:var(--ink);padding:3px 9px;border-radius:99px;letter-spacing:.5px;text-transform:uppercase}
 .lg-go{color:var(--t2);font-size:18px;font-weight:800}
+/* ── Jetons de boost ── */
+.tokens-bar{margin:0 16px 6px;padding:11px 13px;border-radius:14px;
+  background:linear-gradient(135deg, rgba(255,179,0,.12), rgba(13,24,48,.7));
+  border:1px solid rgba(255,179,0,.32);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+.tk{display:flex;align-items:center;gap:8px}
+.tk-ic{font-size:22px}
+.tk-lbl{font-size:10px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.5px}
+.tk-val{font-family:var(--fhead);font-size:20px;font-weight:900;color:var(--am);line-height:1}
+.tk-val small{font-size:11px;color:var(--t2);font-weight:700}
+.tk-hint{flex:1 1 100%;font-size:10.5px;color:var(--t2);font-weight:600;line-height:1.5}
 
 /* ── main / nav ── */
 .main{flex:1 1 auto;padding-bottom:104px}
@@ -920,15 +931,25 @@ function journeyKey(m){
 }
 function journeyLabel(k){return k.indexOf("J")===0?("Journée "+k.slice(1)):k}
 function superPhase(m){return stageBucket(m.stage)==="Groupes"?"groupes":"phase finale"}
-function findBoostHolder(level,ref){
-  var keyRef=(level===2)?journeyKey(ref):superPhase(ref);
-  for(var id in S.pronos){
-    if((S.pronos[id].boost||1)!==level)continue;
-    var m=S.matches.find(function(x){return x.id===parseInt(id,10)});
-    if(!m||m.id===ref.id)continue;
-    if(((level===2)?journeyKey(m):superPhase(m))===keyRef)return m;
-  }
-  return null;
+/* ─── JETONS DE BOOST (v2) ─────────────────────────────────────
+   50 jetons par phase (groupes / phase finale). Placer un boost
+   coûte des jetons : ⚡×2 = 5, ⭐×3 = 15. On REGAGNE des jetons en
+   jouant : +2 par bon résultat, +5 par score exact (matchs joués).
+   Solde phase = 50 + gains − coûts engagés. */
+var BOOST_COST={2:5,3:15};
+var TOKENS_BASE=50;
+function phaseTokens(phase){
+  var gain=0,spent=0;
+  S.matches.forEach(function(m){
+    if(superPhase(m)!==phase)return;
+    var p=S.pronos[m.id];if(!p)return;
+    if((p.boost||1)>1)spent+=BOOST_COST[p.boost]||0;
+    if(m.score1!=null&&m.score2!=null){
+      var o=predOutcome(p,m);
+      if(o==="exact")gain+=5;else if(o==="good")gain+=2;
+    }
+  });
+  return {base:TOKENS_BASE,gain:gain,spent:spent,solde:TOKENS_BASE+gain-spent};
 }
 function cycleBoost(id){
   var m=S.matches.find(function(x){return x.id===id});
@@ -937,20 +958,19 @@ function cycleBoost(id){
   if(!p){toast("Saisis d'abord un score");return}
   var cur=p.boost||1,next=cur===1?2:cur===2?3:1;
   if(next>1){
-    var holder=findBoostHolder(next,m);
-    if(holder){
-      if(matchState(holder)!=="open"){
-        // le capitaine est déjà consommé sur un match verrouillé → impossible
-        toast((next===2?"⚡ Boost ×2 déjà placé":"⭐ Super Boost ×3 déjà placé")+" sur "+holder.team1+"-"+holder.team2);
-        p.boost=1;markDirty(id);save();render();return;
-      }
-      S.pronos[holder.id].boost=1;markDirty(holder.id);
+    var t=phaseTokens(superPhase(m));
+    var dispo=t.solde+(BOOST_COST[cur]||0); // on récupère le coût du boost actuel qu'on remplace
+    var cost=BOOST_COST[next]||0;
+    if(dispo<cost){
+      toast("💰 Pas assez de jetons "+(superPhase(m)==="groupes"?"(poules)":"(finale)")+" : "+dispo+" dispo, "+cost+" requis");
+      return;
     }
   }
   p.boost=next;markDirty(id);save();render();
-  if(next===2)toast("⚡ Boost ×2 — ton match fort de la "+journeyLabel(journeyKey(m)));
-  else if(next===3)toast("⭐ Super Boost ×3 — unique pour toute la "+superPhase(m)+" !");
-  else toast("Boost retiré");
+  var solde=phaseTokens(superPhase(m)).solde;
+  if(next===2)toast("⚡ Boost ×2 placé (−5 jetons) · reste "+solde);
+  else if(next===3)toast("⭐ Super Boost ×3 placé (−15 jetons) · reste "+solde);
+  else toast("Boost retiré · +"+( (BOOST_COST[cur]||0) )+" jetons rendus");
 }
 /* Bonus "Seul au monde" : +200 pts si tu es le SEUL de la ligue avec le score exact */
 function lonelyExactUid(preds,m){
@@ -1081,12 +1101,13 @@ function vPronos(){
    +'<div class="ls-rank-pts">'+(me?me.points:0)+' pts</div></div></div>';
   h+='<div class="sec"><span>📝 Mes pronos</span>'
    +'<span class="sec-count" style="cursor:pointer;color:var(--g)" onclick="importFromFootFlash()">📥 Importer de Foot Flash</span></div>';
-  var nB=countBoosts();
-  if(nB>0){
-    h+='<div style="margin:0 16px 8px;padding:10px 12px;background:rgba(255,179,0,.1);border:1px solid rgba(255,179,0,.4);border-radius:12px;font-size:12px;color:var(--t2);line-height:1.5">'
-      +'⚡ Tu as <b style="color:var(--am)">'+nB+'</b> boost(s) placé(s). Rappel : <b>1 seul ⚡×2 par journée</b> et <b>1 seul ⭐×3 par phase</b>. '
-      +'<span style="cursor:pointer;color:var(--g);font-weight:800;text-decoration:underline" onclick="clearAllBoosts()">Tout remettre à zéro</span></div>';
-  }
+  // Solde de jetons de boost (par phase)
+  var tg=phaseTokens("groupes"), tf=phaseTokens("phase finale");
+  h+='<div class="tokens-bar">';
+  h+='<div class="tk"><span class="tk-ic">🪙</span><div><div class="tk-lbl">Jetons poules</div><div class="tk-val">'+tg.solde+'<small>/'+(tg.base+tg.gain)+'</small></div></div></div>';
+  h+='<div class="tk"><span class="tk-ic">🪙</span><div><div class="tk-lbl">Jetons finale</div><div class="tk-val">'+tf.solde+'<small>/'+(tf.base+tf.gain)+'</small></div></div></div>';
+  h+='<div class="tk-hint">⚡×2 = 5 · ⭐×3 = 15 · tu en regagnes en gagnant'+(countBoosts()>0?' · <span style="cursor:pointer;color:var(--g);text-decoration:underline" onclick="clearAllBoosts()">remettre à zéro</span>':'')+'</div>';
+  h+='</div>';
   h+='<div class="chips">'+STAGES.map(function(s){
     return '<button class="chip'+(s===S.phase?" on":"")+'" onclick="S.phase=\''+s+'\';render()">'+s+'</button>'}).join("")+'</div>';
   var visible=S.matches.filter(function(m){return S.phase==="Tout"||stageBucket(m.stage)===S.phase});
@@ -1174,7 +1195,7 @@ function vDetail(){
     });
     h+='</div>';
   }
-  h+='<div class="legend">Barème : bon résultat <b>100</b> · score exact <b>300</b> · ⚡ Boost ×2 · ⭐ Super Boost ×3 · 🎯 seul au monde +200</div>';
+  h+='<div class="legend">Barème : bon résultat <b>100</b> · score exact <b>300</b> · ⚡ Boost ×2 (5🪙) · ⭐ Super Boost ×3 (15🪙) · 🎯 seul au monde +200</div>';
   return h;
 }
 function vClassement(){
@@ -1244,8 +1265,9 @@ function vLigue(){
   h+='<div class="mb add" onclick="shareLink()"><div class="mb-add">＋</div><span>Inviter</span></div></div>';
   h+='<div class="card rules"><div class="rules-h">⚖️ Règles du jeu</div><ul>'
    +'<li>Bon résultat (1/N/2) : <b class="g">100 pts</b> · score exact : <b class="g">300 pts</b></li>'
-   +'<li>⚡ <b>Boost ×2</b> : un seul match par journée — choisis bien !</li>'
-   +'<li>⭐ <b>Super Boost ×3</b> : un seul pour les groupes, un seul pour la phase finale</li>'
+   +'<li>🪙 <b>50 jetons par phase</b> (poules / finale) pour booster tes matchs</li>'
+   +'<li>⚡ <b>Boost ×2</b> = 5 jetons · ⭐ <b>Super Boost ×3</b> = 15 jetons — autant que ton budget le permet</li>'
+   +'<li>💰 Tu <b>regagnes des jetons</b> en jouant : +2 par bon résultat, +5 par score exact</li>'
    +'<li>🎯 <b>Seul au monde +200</b> : bonus si tu es le seul de la ligue avec le score exact</li>'
    +'<li>Pronos modifiables jusqu\'au coup d\'envoi, puis 🔒 verrouillés par le serveur</li>'
    +'<li>Les pronos des potos n\'apparaissent qu\'après le coup d\'envoi</li></ul></div>';
