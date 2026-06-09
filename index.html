@@ -525,7 +525,7 @@ function applySuggestion(id){
   if(!m||matchState(m)!=="open"){toast("🔒 Match verrouillé");return}
   var sg=suggestedScore(m.team1,m.team2);
   S.pronos[id]={s1:sg.s1,s2:sg.s2,boost:(S.pronos[id]&&S.pronos[id].boost)||1};
-  markDirty(id);save();render();
+  markDirty(id);save();ppSyncPush(id);render();
   toast("🎲 Prono suggéré appliqué : "+sg.s1+"-"+sg.s2);
 }
 
@@ -763,6 +763,48 @@ function save(){
   localStorage.setItem("ppff_leagues",JSON.stringify(S.leagues||[]));
   if(S.userId)localStorage.setItem("ppff_user",S.userId);
 }
+/* ═══ Synchro pronos Prono Poto ⇄ Foot Flash (store partagé, même domaine) ═══
+   Scores uniquement (les boosts restent propres à chaque app), matchs OUVERTS
+   uniquement, jamais d'effacement. "Dernier modifié gagne" via horodatage. */
+var PP_SYNC_KEY="ff_shared_pronos", PP_TS_KEY="ppff_pronos_ts";
+function ppSyncReadShared(){try{return JSON.parse(localStorage.getItem(PP_SYNC_KEY)||"{}")||{}}catch(e){return {}}}
+function ppSyncReadTs(){try{return JSON.parse(localStorage.getItem(PP_TS_KEY)||"{}")||{}}catch(e){return {}}}
+function ppMatchOpen(id){ if(!S.matches)return false; var m=S.matches.find(function(x){return String(x.id)===String(id)}); return !!m && matchState(m)==="open"; }
+function ppSyncPush(id){
+  try{ var p=S.pronos[id]; if(!p||p.s1==null||p.s2==null)return;
+    var sh=ppSyncReadShared(), t=Date.now();
+    sh[String(id)]={s1:p.s1,s2:p.s2,ts:t}; localStorage.setItem(PP_SYNC_KEY,JSON.stringify(sh));
+    var ts=ppSyncReadTs(); ts[String(id)]=t; localStorage.setItem(PP_TS_KEY,JSON.stringify(ts));
+  }catch(e){}
+}
+function ppSyncPull(){
+  var sh=ppSyncReadShared(), ts=ppSyncReadTs(), changed=false;
+  Object.keys(sh).forEach(function(id){
+    var o=sh[id]; if(!o||o.s1==null||o.s2==null)return;     // score complet uniquement
+    if(!ppMatchOpen(id))return;                             // match ouvert uniquement
+    if(o.ts>(ts[id]||0)){
+      var p=S.pronos[id]||{boost:1};
+      p.s1=Math.max(0,Math.min(20,o.s1)); p.s2=Math.max(0,Math.min(20,o.s2));
+      if(p.boost==null)p.boost=1;
+      S.pronos[id]=p; markDirty(id); ts[id]=o.ts; changed=true;
+    }
+  });
+  if(changed){ try{localStorage.setItem(PP_TS_KEY,JSON.stringify(ts))}catch(e){}; save(); }
+  return changed;
+}
+function ppSyncSeedOnce(){
+  try{ if(localStorage.getItem("ppff_sync_seeded")==="1")return;
+    var sh=ppSyncReadShared(), ts=ppSyncReadTs(), t0=Date.now();
+    Object.keys(S.pronos||{}).forEach(function(id){ var p=S.pronos[id];
+      if(p&&p.s1!=null&&p.s2!=null){ if(ts[id]==null)ts[id]=t0;
+        var cur=sh[String(id)]; if(!cur||ts[id]>=cur.ts){ sh[String(id)]={s1:p.s1,s2:p.s2,ts:ts[id]}; } }
+    });
+    localStorage.setItem(PP_SYNC_KEY,JSON.stringify(sh));
+    localStorage.setItem(PP_TS_KEY,JSON.stringify(ts));
+    localStorage.setItem("ppff_sync_seeded","1");
+  }catch(e){}
+}
+function ppSyncReconcile(){ try{ ppSyncSeedOnce(); if(ppSyncPull())render(); }catch(e){} }
 /* ─── Multi-ligues : on peut être membre de plusieurs ligues ──
    S.leagues = toutes mes ligues ; S.league = la ligue ACTIVE
    (classement et pronos des potos affichés). Les pronos sont
@@ -932,7 +974,7 @@ function setScore(id,side,delta){
   if(matchState(m)!=="open"){toast("🔒 Match verrouillé");return}
   var p=S.pronos[id]||{s1:0,s2:0,boost:1};
   p[side]=Math.max(0,Math.min(20,(p[side]||0)+delta));
-  S.pronos[id]=p;markDirty(id);save();render();
+  S.pronos[id]=p;markDirty(id);save();ppSyncPush(id);render();
 }
 /* ── Case de score : appui = +1 but · appui long (≈420ms) = −1 but.
    Un seul geste par case → fini les deux boutons −/+ trop gros. ── */
@@ -968,7 +1010,7 @@ function setQuick(id,a,b){
   if(matchState(m)!=="open"){toast("🔒 Match verrouillé");return}
   var p=S.pronos[id]||{boost:1};
   p.s1=a;p.s2=b;
-  S.pronos[id]=p;markDirty(id);save();render();
+  S.pronos[id]=p;markDirty(id);save();ppSyncPush(id);render();
 }
 // Prono suggéré par le moteur Foot Flash, directement depuis la liste
 function setSuggested(id){
@@ -1554,7 +1596,7 @@ function ffImportApply(data){
     p.s1=Math.max(0,Math.min(20,+v.a||0));
     p.s2=Math.max(0,Math.min(20,+v.b||0));
     p.boost=1; // les boosts Foot Flash ne s'appliquent pas ici (règles différentes) — à replacer dans Prono Poto
-    S.pronos[id]=p;markDirty(id);n++;
+    S.pronos[id]=p;markDirty(id);if(typeof ppSyncPush==="function")ppSyncPush(id);n++;
   });
   if(n)save();
   render();
@@ -1590,6 +1632,11 @@ async function boot(){
 }
 (async function init(){
   await boot();
+  // Synchro avec Foot Flash : on récupère les scores édités là-bas (et on publie les nôtres)
+  try{ ppSyncSeedOnce(); ppSyncPull();
+    window.addEventListener("storage", function(e){ if(e&&e.key===PP_SYNC_KEY) ppSyncReconcile(); });
+    window.addEventListener("focus", ppSyncReconcile);
+  }catch(e){}
   var qs=new URLSearchParams(location.search);
   // Lien d'import Foot Flash (?ffimport=base64) — depuis l'APK ou un autre appareil
   var ffi=qs.get("ffimport"),ffiOk=false;
