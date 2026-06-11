@@ -1651,8 +1651,12 @@ async function boot(){
   var urlCode=qs.get("ligue");
   if(!S.league&&urlCode){S.view="onboard";render();openModal("join");}
   else{S.view=S.league?"pronos":"onboard";render();}
-  // Pronos Foot Flash reçus : on propose le choix de la ligue (actuelle / rejoindre / créer)
-  if(ffiOk)openModal("ffimport");
+  // Pronos Foot Flash reçus : si l'utilisateur est DÉJÀ dans une ligue,
+  // application directe (pas de question inutile) ; sinon choix de la ligue.
+  if(ffiOk){
+    if(S.league){ ffApplyPending(); }
+    else openModal("ffimport");
+  }
 })();
 </script>
 </body>
