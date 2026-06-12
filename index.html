@@ -1148,13 +1148,41 @@ function shareLink(){
   else copyLink();
 }
 /* ── Installation plein écran (PWA) ── */
+/* Installation PWA en 1 tap (Android/Chrome/Brave/Edge) : on capte l'événement
+   beforeinstallprompt pour proposer un vrai bouton "Installer" au lieu des étapes
+   manuelles. iOS (Safari) ne le supporte pas → on garde les étapes Partager. */
+var _deferredPrompt=null;
+window.addEventListener("beforeinstallprompt", function(e){
+  e.preventDefault(); _deferredPrompt=e;
+  try{ if(typeof S!=="undefined" && S.modal==="install") renderModal(); }catch(_e){}
+});
+window.addEventListener("appinstalled", function(){
+  _deferredPrompt=null;
+  try{ var b=document.getElementById("installBanner"); if(b)b.remove(); }catch(_e){}
+  try{ toast("✅ Prono Poto installé — lance-le depuis l'icône ⚽"); }catch(_e){}
+});
+function canInstallNow(){ return !!_deferredPrompt; }
+async function doInstall(){
+  if(!_deferredPrompt){ openModal("install"); return; }   // navigateur sans 1-tap → étapes manuelles
+  try{
+    _deferredPrompt.prompt();
+    var choice=await _deferredPrompt.userChoice;
+    _deferredPrompt=null;
+    if(choice&&choice.outcome==="accepted"){ closeModal(); }
+    else { try{ if(S.modal==="install") renderModal(); }catch(_e){} }
+  }catch(e){ openModal("install"); }
+}
+// Enregistre le service worker (rend l'app vraiment installable = plein écran sans barre)
+if("serviceWorker" in navigator){
+  window.addEventListener("load", function(){ try{ navigator.serviceWorker.register("sw.js"); }catch(e){} });
+}
 function isIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1)}
 function isStandalone(){return window.navigator.standalone===true||(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)}
 function dismissInstall(){try{localStorage.setItem("ppff_install_dismiss","1")}catch(e){}; var b=$("installBanner"); if(b)b.remove();}
 function installBannerHtml(){
   if(isStandalone())return "";
   try{if(localStorage.getItem("ppff_install_dismiss"))return ""}catch(e){}
-  return '<div id="installBanner" class="install-banner" onclick="openModal(\'install\')">'
+  return '<div id="installBanner" class="install-banner" onclick="doInstall()">'
     +'<span class="ib-ic">📲</span>'
     +'<span class="ib-txt"><b>Installe Prono Poto</b> en plein écran sur ton téléphone</span>'
     +'<button class="ib-x" onclick="event.stopPropagation();dismissInstall()" aria-label="Fermer">✕</button></div>';
@@ -1550,6 +1578,7 @@ function renderModal(){
     var ios=isIOS();
     inner='<div class="sheet-title">📲 Installer Prono Poto</div>'
      +'<div class="mini-hint" style="margin:-6px 0 12px">Ajoute l\'appli à ton écran d\'accueil : elle s\'ouvre en <b>plein écran</b>, sans la barre du navigateur — comme une vraie appli, et hors-ligne le calendrier reste dispo.</div>'
+     +(canInstallNow()?'<button class="btn" style="margin-bottom:12px" onclick="doInstall()">📲 Installer maintenant — en 1 tap</button><div class="mini-hint" style="margin:-4px 0 12px;text-align:center">…ou suis les étapes ci-dessous</div>':'')
      +'<div class="inst-tabs">'
        +'<button class="inst-tab'+(ios?' on':'')+'" onclick="document.getElementById(\'inst-ios\').style.display=\'block\';document.getElementById(\'inst-and\').style.display=\'none\';this.classList.add(\'on\');this.nextElementSibling.classList.remove(\'on\')">🍎 iPhone / iPad</button>'
        +'<button class="inst-tab'+(ios?'':' on')+'" onclick="document.getElementById(\'inst-and\').style.display=\'block\';document.getElementById(\'inst-ios\').style.display=\'none\';this.classList.add(\'on\');this.previousElementSibling.classList.remove(\'on\')">🤖 Android</button>'
