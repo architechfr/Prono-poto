@@ -283,6 +283,22 @@ h1,h2{font-weight:900;letter-spacing:.5px}
 .m-detail-link{font-size:12px;font-weight:800;color:var(--g)}
 .m-pts{font-size:15px;font-weight:900;white-space:nowrap}
 .m-pts.exact{color:var(--am)} .m-pts.good{color:var(--g)} .m-pts.miss{color:var(--t2)}
+/* Match terminé : score RÉEL en grand (blanc) + chip "ton prono" coloré selon le résultat */
+.m-score-real{display:flex;align-items:center;gap:7px;font-size:25px;font-weight:900;color:var(--tx);line-height:1}
+.m-score-real span{color:var(--t2);font-size:18px}
+.m-pred-chip{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;
+  font-size:11.5px;font-weight:800;margin:9px 0 1px;padding:6px 10px;border-radius:10px;
+  background:rgba(255,255,255,.04);border:1px solid var(--gbord)}
+.m-pred-chip .lbl{color:var(--t2)}
+.m-pred-chip .val{font-weight:900;font-size:13px}
+.m-pred-chip .ico{font-size:12px}
+.m-pred-chip.exact{background:rgba(33,208,122,.12);border-color:rgba(33,208,122,.5)}
+.m-pred-chip.exact .val,.m-pred-chip.exact .res{color:#21d07a}
+.m-pred-chip.good{background:rgba(255,179,0,.12);border-color:rgba(255,179,0,.5)}
+.m-pred-chip.good .val,.m-pred-chip.good .res{color:var(--am)}
+.m-pred-chip.miss{background:rgba(255,23,68,.10);border-color:rgba(255,23,68,.45)}
+.m-pred-chip.miss .val,.m-pred-chip.miss .res{color:var(--rd)}
+.m-pred-chip .res{font-weight:900}
 .m-tbd{font-size:13px;color:var(--t2);font-weight:700;text-align:center;padding:4px 0}
 
 /* ── publish dock ── */
@@ -1255,14 +1271,18 @@ function matchRowHtml(m){
   var locked=(st!=="open");
   var pts=(st==="played"&&p)?computePoints(p,m):null;
   var out=(st==="played"&&p)?predOutcome(p,m):null;
-  var badge=st==="played"?'<span class="m-real">Réel '+m.score1+'–'+m.score2+'</span>'
+  var badge=st==="played"?'<span class="m-real">Terminé</span>'
     :st==="live"?'<span class="m-live"><i></i>EN DIRECT</span>'
     :'<span class="m-tag">'+countdown(m.kickoff)+'</span>';
   var h='<div class="match st-'+st+'" onclick="openDetail('+m.id+')">';
   h+='<div class="m-head"><span>'+fmtH(m.kickoff)+' · '+esc(m.stadium||"")+'</span>'+badge+'</div>';
   h+='<div class="m-row">';
   h+='<div class="m-team"><span class="fl">'+flag(m.team1)+'</span>'+m.team1+'</div>';
-  if(locked){
+  if(st==="played"){
+    // Match terminé : on affiche le SCORE RÉEL en grand
+    h+='<div class="m-score-real"><b>'+m.score1+'</b><span>-</span><b>'+m.score2+'</b></div>';
+  }else if(locked){
+    // En direct / verrouillé sans score réel : on montre le prono figé
     h+='<div class="m-score-locked">'+(p?('<b>'+p.s1+'</b><span>-</span><b>'+p.s2+'</b>'):'<span class="m-noprono">– pas de prono –</span>')+'</div>';
   }else{
     h+='<div class="m-steppers" onclick="event.stopPropagation()">';
@@ -1272,6 +1292,18 @@ function matchRowHtml(m){
     h+='</div>';
   }
   h+='<div class="m-team right">'+m.team2+'<span class="fl">'+flag(m.team2)+'</span></div></div>';
+  // Match terminé : rappel de TON prono, coloré selon le résultat (vert parfait · orange bon vainqueur · rouge raté)
+  if(st==="played"){
+    if(p){
+      var lbl=out==="exact"?"Score exact !":out==="good"?"Bon résultat":"Raté";
+      var ico=out==="exact"?"🎯":out==="good"?"≈":"✗";
+      h+='<div class="m-pred-chip '+out+'"><span class="lbl">Ton prono</span>'
+        +'<span class="val">'+p.s1+'–'+p.s2+'</span>'
+        +'<span class="ico">'+ico+'</span><span class="res">'+lbl+'</span></div>';
+    }else{
+      h+='<div class="m-pred-chip miss"><span class="lbl">Aucun prono sur ce match</span></div>';
+    }
+  }
   // Scores rapides : un tap pour pronostiquer (affiché tant que pas de prono)
   if(!locked&&!p){
     h+='<div class="m-quick" onclick="event.stopPropagation()">';
