@@ -889,7 +889,53 @@ function fireConfetti(){
     if(t<120)requestAnimationFrame(tick);else ctx.clearRect(0,0,W,Hh);
   })();
 }
-function markDirty(id){if(S.dirty.indexOf(id)<0)S.dirty.push(id)}
+function markDirty(id){if(S.dirty.indexOf(id)<0)S.dirty.push(id); scheduleAutoPublish();}
+
+/* ─── Publication AUTOMATIQUE ────────────────────────────────────
+   Dès qu'un prono change (match à venir), il part tout seul sur le
+   serveur de la ligue → plus de bouton "Publier" à cliquer. Débounce
+   1,2 s pour regrouper les saisies. En cas d'erreur (quota boost…),
+   les pronos concernés restent "à publier" (le bouton sert de secours). */
+var _autoPubTimer=null, _autoPubBusy=false;
+function scheduleAutoPublish(){
+  if(DEMO||!S.league||!S.dirty.length)return;
+  clearTimeout(_autoPubTimer);
+  _autoPubTimer=setTimeout(function(){ autoPublish(); }, 1200);
+}
+async function autoPublish(){
+  if(_autoPubBusy||DEMO||!S.league)return;
+  // matchs déjà commencés → on ne peut plus publier : on les retire de la file
+  var late=S.dirty.filter(function(id){return !ppMatchOpen(id)});
+  if(late.length){ S.dirty=S.dirty.filter(function(id){return ppMatchOpen(id)}); save(); }
+  var ids=S.dirty.filter(function(id){var p=S.pronos[id]; return ppMatchOpen(id)&&p&&p.s1!=null&&p.s2!=null});
+  if(!ids.length){ try{if(typeof render==="function")render()}catch(e){} return; }
+  _autoPubBusy=true;
+  try{
+    if(!S.userId){ try{await ensureAuth()}catch(e){} }
+    var mk=function(id){var p=S.pronos[id];return{user_id:S.userId,match_id:parseInt(id,10),score1:p.s1,score2:p.s2,boost:p.boost||1}};
+    ids.sort(function(a,b){return ((S.pronos[a].boost)||1)-((S.pronos[b].boost)||1)}); // capitaine libéré avant posé (trigger quota)
+    var r=await sb.from("predictions").upsert(ids.map(mk));
+    if(!r.error){
+      S.dirty=S.dirty.filter(function(id){return ids.indexOf(id)<0}); save();
+    }else{
+      // échec global (souvent quota) → on republie un par un : seuls les fautifs restent en file
+      var failed=0,lastMsg=r.error.message||"";
+      for(var i=0;i<ids.length;i++){
+        var one=await sb.from("predictions").upsert([mk(ids[i])]);
+        if(one.error){ failed++; lastMsg=one.error.message||lastMsg; }
+        else { S.dirty=S.dirty.filter(function(x){return x!==ids[i]}); }
+      }
+      save();
+      if(failed){
+        if(/super capitaine|⭐/i.test(lastMsg)) toast("⭐ "+failed+" prono(s) en attente : 1 seul Super Boost ×3 par phase");
+        else if(/capitaine|boost|quota/i.test(lastMsg)) toast("⚡ "+failed+" prono(s) en attente : 1 seul Boost ×2 par journée");
+        else if(!/kickoff|commenc|now\(\)/i.test(lastMsg)) toast("⚠️ "+failed+" prono(s) non publié(s) : "+lastMsg);
+      }
+    }
+  }catch(e){}
+  _autoPubBusy=false;
+  try{if(typeof render==="function")render()}catch(e){}
+}
 
 /* ─── Couche Supabase ──────────────────────────────────────── */
 async function ensureAuth(){
@@ -1657,6 +1703,8 @@ async function boot(){
     if(S.league){ ffApplyPending(); }
     else openModal("ffimport");
   }
+  // Publication auto des pronos déjà saisis mais jamais publiés (file en attente)
+  try{ if(S.league&&S.dirty.length) autoPublish(); }catch(e){}
 })();
 </script>
 </body>
